@@ -99,8 +99,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
    *
    * Seeding is best effort and never blocks startup: a missing PEOPLE.md reads as
    * empty and people_add creates it on demand, so a failed seed costs the example
-   * file and nothing else. Failures are currently unreportable because
-   * PluginSetupContext exposes no logger. */
+   * file and nothing else. */
   const provision = async (): Promise<void> => {
     try {
       try { await lstat(file()); return; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
@@ -111,7 +110,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
       try { await link(temporary, file()); }
       catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
       finally { await rm(temporary, { force: true }); }
-    } catch { /* optional seed; the plugin operates without it */ }
+    } catch (error) { context.logger.warn("people.seed_failed", "Could not provision PEOPLE.md template; continuing without it", { errorName: error instanceof Error ? error.name : "NonErrorThrown" }); }
   };
   const tools: ToolDefinition[] = [
     tool({ name: "people_add", description: "Add one new ## person section to PEOPLE.md. Include `- Discord ID:` and JSON-array `- 別名:` when known.", inputSchema: { type: "object", additionalProperties: false, required: ["content"], properties: { content: { type: "string", minLength: 4 } } }, policy: { capability: "people.write", tier: "common", interactionRequirement: "not_required", sideEffect: "idempotent" }, async execute(input) {

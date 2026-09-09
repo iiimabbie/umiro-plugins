@@ -37,7 +37,7 @@ test("plugin seeds PEOPLE.md from its template and never overwrites an existing 
   const seeded = await mkdtemp(join(tmpdir(), "umiro-people-seed-"));
   const existing = await mkdtemp(join(tmpdir(), "umiro-people-keep-"));
   try {
-    const plugin = (root: string) => createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, getSecret: () => undefined });
+    const plugin = (root: string) => createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, logger: { debug() {}, info() {}, warn() {}, error() {} }, getSecret: () => undefined });
     await plugin(seeded).start?.();
     const created = await readFile(join(seeded, "PEOPLE.md"), "utf8");
     assert.match(created, /^<people>/);
@@ -53,7 +53,7 @@ test("an unwritable workspace degrades seeding instead of blocking startup", { s
   const root = await mkdtemp(join(tmpdir(), "umiro-people-ro-"));
   try {
     await chmod(root, 0o500);
-    const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, getSecret: () => undefined });
+    const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, logger: { debug() {}, info() {}, warn() {}, error() {} }, getSecret: () => undefined });
     await plugin.start?.();
     await assert.rejects(readFile(join(root, "PEOPLE.md"), "utf8"), /ENOENT/);
   } finally { await chmod(root, 0o700); await rm(root, { recursive: true, force: true }); }
@@ -63,7 +63,7 @@ test("plugin tools atomically add, update and remove PEOPLE entries", async () =
   const root = await mkdtemp(join(tmpdir(), "umiro-people-"));
   try {
     await writeFile(join(root, "PEOPLE.md"), "# PEOPLE\n");
-    const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, getSecret: () => undefined });
+    const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, logger: { debug() {}, info() {}, warn() {}, error() {} }, getSecret: () => undefined });
     await plugin.start?.();
     const tools = new Map(plugin.contributions.tools?.map(tool => [tool.name, tool]));
     const toolContext = { execution: request(true, "1", "").execution, operationId: "op", idempotencyKey: "key", signal: new AbortController().signal };
