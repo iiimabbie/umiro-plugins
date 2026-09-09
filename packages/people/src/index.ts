@@ -1,5 +1,6 @@
-import { lstat, mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { link, lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ContextProvider, ContextRequest, JsonObject, PluginInstance, PluginSetupContext, ToolDefinition, ToolExecutionResult } from "./umiro-api.js";
 
 export interface Person { readonly heading: string; readonly discordId?: string; readonly aliases: readonly string[]; readonly section: string }
@@ -55,7 +56,9 @@ function mentionIds(text: string): string[] { return unique([...text.matchAll(/<
 export function selectRelevantPeople(entries: readonly Person[], request: ContextRequest, config: Pick<PeopleConfig, "maxEntries" | "maxCharacters" | "recentTurns">): Person[] {
   const currentId = request.execution.actor.identities?.find(identity => identity.transport === "discord")?.externalId;
   const byId = new Map(entries.flatMap(entry => entry.discordId ? [[entry.discordId, entry] as const] : []));
-  if (!request.execution.actor.roles.includes("owner")) return currentId && byId.has(currentId) ? [byId.get(currentId)!] : [];
+  // Selection never narrows by who is speaking: everyone appearing in the turn is
+  // retrieved so continuity survives non-owner turns. Whether any of it may be
+  // repeated back is an authorization decision, not a context-audience one.
   const ranked = new Map<Person, number>();
   const add = (entry: Person | undefined, rank: number) => { if (!entry) return; const previous = ranked.get(entry); if (previous === undefined || rank < previous) ranked.set(entry, rank); };
   add(currentId ? byId.get(currentId) : undefined, 0);
@@ -91,6 +94,18 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
   const read = async () => readFile(file(), "utf8").catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return "# PEOPLE\n"; throw error; });
   const writeAtomic = async (content: string) => { await mkdir(dirname(file()), { recursive: true }); const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.tmp`; await writeFile(temporary, `${content.trim()}\n`, { mode: 0o600 }); await rename(temporary, file()); };
   const tool = (definition: Omit<ToolDefinition, "execute"> & { execute: (input: JsonObject) => Promise<unknown> }): ToolDefinition => ({ ...definition, async execute(input) { try { return ok(await serialize(() => definition.execute(input))); } catch (error) { return failed(error); } } });
+  /** Seed PEOPLE.md from the shipped template. link() fails with EEXIST rather than
+   * replacing an existing file, so the seed is atomic and never overwrites. */
+  const provision = async (): Promise<void> => {
+    try { await lstat(file()); return; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    const template = await readFile(fileURLToPath(new URL("../../templates/PEOPLE.md", import.meta.url)), "utf8");
+    await mkdir(dirname(file()), { recursive: true });
+    const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.seed`;
+    await writeFile(temporary, template, { mode: 0o600 });
+    try { await link(temporary, file()); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+    finally { await rm(temporary, { force: true }); }
+  };
   const tools: ToolDefinition[] = [
     tool({ name: "people_add", description: "Add one new ## person section to PEOPLE.md. Include `- Discord ID:` and JSON-array `- 別名:` when known.", inputSchema: { type: "object", additionalProperties: false, required: ["content"], properties: { content: { type: "string", minLength: 4 } } }, policy: { capability: "people.write", tier: "common", interactionRequirement: "not_required", sideEffect: "idempotent" }, async execute(input) {
       const entry = String(input.content).trim(); if (!entry.startsWith("## ")) throw new TypeError("content must start with a level-two heading");
@@ -109,8 +124,13 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
   ];
   const provider: ContextProvider = { id: "people.relevant", role: "people", priority: 400, async load(request) {
     const content = await read(); const entries = parsePeople(content);
-    const selected = request.execution.actor.roles.includes("owner") && (config.inlineLimit ?? 0) > 0 && content.length <= (config.inlineLimit ?? 0) ? entries : selectRelevantPeople(entries, request, config);
+    const selected = (config.inlineLimit ?? 0) > 0 && content.length <= (config.inlineLimit ?? 0) ? entries : selectRelevantPeople(entries, request, config);
     return selected.length ? [{ id: "people.relevant:selected", providerId: "people.relevant", role: "people", content: render(selected), source: { kind: "file", ref: file() }, influence: "information", instructionAuthority: "none" }] : [];
   } };
-  return { contributions: { contextProviders: [provider], tools }, async start() { const stat = await lstat(config.workspacePath); if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error(`people workspace must be a regular directory: ${config.workspacePath}`); workspaceRoot = await realpath(config.workspacePath); } };
+  return { contributions: { contextProviders: [provider], tools }, async start() {
+    const stat = await lstat(config.workspacePath);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error(`people workspace must be a regular directory: ${config.workspacePath}`);
+    workspaceRoot = await realpath(config.workspacePath);
+    await provision();
+  } };
 }

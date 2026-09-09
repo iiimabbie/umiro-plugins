@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "main": "dist/src/index.js",
-  "files": ["dist", "umiro.plugin.json"],
+  "files": ["dist", "templates", "umiro.plugin.json"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

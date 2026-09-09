@@ -27,9 +27,26 @@ test("ranks current author, mentions, replies, aliases and recent continuity for
   assert.deepEqual(selected.map(entry => entry.discordId), ["1", "2", "3"]);
 });
 
-test("non-owner only receives their own card even when mentioning others", () => {
-  const entries = parsePeople("## A\n- Discord ID: 1\n\n## B\n- Discord ID: 2\n");
-  assert.deepEqual(selectRelevantPeople(entries, request(false, "2", "<@1>"), { maxEntries: 8, maxCharacters: 10_000 }).map(entry => entry.discordId), ["2"]);
+test("non-owner turns retrieve every person appearing in the turn, not only the speaker", () => {
+  const entries = parsePeople("## A\n- Discord ID: 1\n\n## B\n- Discord ID: 2\n\n## C\n- Discord ID: 3\n");
+  const selected = selectRelevantPeople(entries, request(false, "2", "<@1>"), { maxEntries: 8, maxCharacters: 10_000 });
+  assert.deepEqual(selected.map(entry => entry.discordId), ["2", "1"]);
+});
+
+test("plugin seeds PEOPLE.md from its template and never overwrites an existing file", async () => {
+  const seeded = await mkdtemp(join(tmpdir(), "umiro-people-seed-"));
+  const existing = await mkdtemp(join(tmpdir(), "umiro-people-keep-"));
+  try {
+    const plugin = (root: string) => createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, getSecret: () => undefined });
+    await plugin(seeded).start?.();
+    const created = await readFile(join(seeded, "PEOPLE.md"), "utf8");
+    assert.match(created, /^<people>/);
+    assert.ok(parsePeople(created).length > 0, "template must parse as PEOPLE entries");
+
+    await writeFile(join(existing, "PEOPLE.md"), "# PEOPLE\n\n## Kept\n");
+    await plugin(existing).start?.();
+    assert.equal(await readFile(join(existing, "PEOPLE.md"), "utf8"), "# PEOPLE\n\n## Kept\n");
+  } finally { await rm(seeded, { recursive: true, force: true }); await rm(existing, { recursive: true, force: true }); }
 });
 
 test("plugin tools atomically add, update and remove PEOPLE entries", async () => {
