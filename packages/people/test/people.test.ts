@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -47,6 +47,16 @@ test("plugin seeds PEOPLE.md from its template and never overwrites an existing 
     await plugin(existing).start?.();
     assert.equal(await readFile(join(existing, "PEOPLE.md"), "utf8"), "# PEOPLE\n\n## Kept\n");
   } finally { await rm(seeded, { recursive: true, force: true }); await rm(existing, { recursive: true, force: true }); }
+});
+
+test("an unwritable workspace degrades seeding instead of blocking startup", { skip: process.getuid?.() === 0 ? "root bypasses directory permissions" : false }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "umiro-people-ro-"));
+  try {
+    await chmod(root, 0o500);
+    const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, getSecret: () => undefined });
+    await plugin.start?.();
+    await assert.rejects(readFile(join(root, "PEOPLE.md"), "utf8"), /ENOENT/);
+  } finally { await chmod(root, 0o700); await rm(root, { recursive: true, force: true }); }
 });
 
 test("plugin tools atomically add, update and remove PEOPLE entries", async () => {

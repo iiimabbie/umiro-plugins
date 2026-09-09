@@ -95,16 +95,23 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
   const writeAtomic = async (content: string) => { await mkdir(dirname(file()), { recursive: true }); const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.tmp`; await writeFile(temporary, `${content.trim()}\n`, { mode: 0o600 }); await rename(temporary, file()); };
   const tool = (definition: Omit<ToolDefinition, "execute"> & { execute: (input: JsonObject) => Promise<unknown> }): ToolDefinition => ({ ...definition, async execute(input) { try { return ok(await serialize(() => definition.execute(input))); } catch (error) { return failed(error); } } });
   /** Seed PEOPLE.md from the shipped template. link() fails with EEXIST rather than
-   * replacing an existing file, so the seed is atomic and never overwrites. */
+   * replacing an existing file, so the seed can never overwrite real data.
+   *
+   * Seeding is best effort and never blocks startup: a missing PEOPLE.md reads as
+   * empty and people_add creates it on demand, so a failed seed costs the example
+   * file and nothing else. Failures are currently unreportable because
+   * PluginSetupContext exposes no logger. */
   const provision = async (): Promise<void> => {
-    try { await lstat(file()); return; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-    const template = await readFile(fileURLToPath(new URL("../../templates/PEOPLE.md", import.meta.url)), "utf8");
-    await mkdir(dirname(file()), { recursive: true });
-    const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.seed`;
-    await writeFile(temporary, template, { mode: 0o600 });
-    try { await link(temporary, file()); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
-    finally { await rm(temporary, { force: true }); }
+    try {
+      try { await lstat(file()); return; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+      const template = await readFile(fileURLToPath(new URL("../../templates/PEOPLE.md", import.meta.url)), "utf8");
+      await mkdir(dirname(file()), { recursive: true });
+      const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.seed`;
+      await writeFile(temporary, template, { mode: 0o600 });
+      try { await link(temporary, file()); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+      finally { await rm(temporary, { force: true }); }
+    } catch { /* optional seed; the plugin operates without it */ }
   };
   const tools: ToolDefinition[] = [
     tool({ name: "people_add", description: "Add one new ## person section to PEOPLE.md. Include `- Discord ID:` and JSON-array `- 別名:` when known.", inputSchema: { type: "object", additionalProperties: false, required: ["content"], properties: { content: { type: "string", minLength: 4 } } }, policy: { capability: "people.write", tier: "common", interactionRequirement: "not_required", sideEffect: "idempotent" }, async execute(input) {
