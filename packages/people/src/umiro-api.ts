@@ -39,7 +39,7 @@ export interface ToolDefinition {
   readonly execute: (input: JsonObject, context: { readonly operationId: string; readonly signal: AbortSignal }) => Promise<ToolExecutionResult>;
 }
 export interface PluginLogger { debug(event: string, message: string, data?: JsonObject): void; info(event: string, message: string, data?: JsonObject): void; warn(event: string, message: string, data?: JsonObject): void; error(event: string, message: string, data?: JsonObject): void }
-export interface PluginSetupContext { readonly pluginId: string; readonly namespace: string; readonly permissionCeiling: unknown; readonly config: JsonObject; readonly logger: PluginLogger; getSecret(name: string): string | undefined }
+export interface PluginSetupContext { readonly pluginId: string; readonly namespace: string; readonly permissionCeiling: unknown; readonly config: JsonObject; readonly logger?: PluginLogger; getSecret(name: string): string | undefined }
 export interface PluginInstance {
   readonly contributions: { readonly tools?: readonly ToolDefinition[]; readonly contextProviders?: readonly ContextProvider[] };
   start?(): Promise<void>;
