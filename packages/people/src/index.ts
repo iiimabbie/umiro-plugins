@@ -92,7 +92,8 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
   const file = () => join(workspaceRoot, "PEOPLE.md");
   const serialize = async <T>(operation: () => Promise<T>): Promise<T> => { const previous = queue; let release!: () => void; queue = new Promise<void>(resolve => { release = resolve; }); await previous; try { return await operation(); } finally { release(); } };
   const read = async () => readFile(file(), "utf8").catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return "# PEOPLE\n"; throw error; });
-  const writeAtomic = async (content: string) => { await mkdir(dirname(file()), { recursive: true }); const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.tmp`; await writeFile(temporary, `${content.trim()}\n`, { mode: 0o600 }); await rename(temporary, file()); };
+  const syncSearch = async () => { const search = context.services?.searchDocuments; if (!search) return; try { const content = await read(); await search.replaceSource("PEOPLE.md", [{ id: "PEOPLE.md", sourceType: "workspace_file", sourceId: "PEOPLE.md", text: content, visibility: { kind: "all" } }]); } catch (error) { context.logger?.warn("people.search_sync_failed", "Could not refresh PEOPLE.md search projection", { errorName: error instanceof Error ? error.name : "NonErrorThrown" }); } };
+  const writeAtomic = async (content: string) => { await mkdir(dirname(file()), { recursive: true }); const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.tmp`; await writeFile(temporary, `${content.trim()}\n`, { mode: 0o600 }); await rename(temporary, file()); await syncSearch(); };
   const tool = (definition: Omit<ToolDefinition, "execute"> & { execute: (input: JsonObject) => Promise<unknown> }): ToolDefinition => ({ ...definition, async execute(input) { try { return ok(await serialize(() => definition.execute(input))); } catch (error) { return failed(error); } } });
   /** Seed PEOPLE.md from the shipped template. link() fails with EEXIST rather than
    * replacing an existing file, so the seed can never overwrite real data.
@@ -138,5 +139,6 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error(`people workspace must be a regular directory: ${config.workspacePath}`);
     workspaceRoot = await realpath(config.workspacePath);
     await provision();
+    await syncSearch();
   } };
 }
