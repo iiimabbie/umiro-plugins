@@ -27,7 +27,7 @@ export function validateSubagentProfiles(manifest: PluginManifest): void {
     if (!profile.description.trim()) throw new TypeError(`subagent profile ${profile.id} requires a description`);
     if (!profile.instructions.length) throw new TypeError(`subagent profile ${profile.id} requires instructions`);
     if (profile.instructions.some(line => typeof line !== "string")) throw new TypeError(`subagent profile ${profile.id} instructions must be strings`);
-    if (!renderInstructions(profile).trim()) throw new TypeError(`subagent profile ${profile.id} instructions are blank`);
+    if (profile.instructions.some(line => !line.trim())) throw new TypeError(`subagent profile ${profile.id} instructions contain a blank element`);
     const length = renderInstructions(profile).length;
     if (length > PROFILE_LIMITS.maxInstructionCharacters) throw new TypeError(`subagent profile ${profile.id} instructions exceed ${PROFILE_LIMITS.maxInstructionCharacters} characters`);
     total += length;
