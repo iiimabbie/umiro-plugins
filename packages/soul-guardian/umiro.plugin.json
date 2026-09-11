@@ -1,11 +1,11 @@
 {
   "schemaVersion": 0,
   "id": "soul-guardian",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "coreApi": "0",
   "entry": "./dist/src/index.js",
   "permissions": {
-    "capabilities": ["soul_guardian.status", "soul_guardian.check", "soul_guardian.history", "soul_guardian.approve", "soul_guardian.restore", "discord.message.write", "discord.button.write"],
+    "capabilities": ["soul_guardian.status", "soul_guardian.check", "soul_guardian.diff", "soul_guardian.history", "soul_guardian.approve", "soul_guardian.restore", "discord.message.write", "discord.button.write"],
     "visibility": { "kind": "all" },
     "instructionAuthority": "none"
   },
@@ -26,14 +26,14 @@
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["path", "mode"],
-          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Complete file path relative to the workspace." }, "mode": { "enum": ["restore", "alert", "ignore"], "description": "restore reverts drift, alert only reports it, and ignore skips the file." } }
+          "required": ["path"],
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Complete file path relative to the workspace. Every listed file is monitored for changes and only produces alerts." } }
         }
       }
     }
   },
   "contributes": {
-    "tools": ["soul_guardian_status", "soul_guardian_check", "soul_guardian_history", "soul_guardian_approve", "soul_guardian_restore"],
+    "tools": ["soul_guardian_status", "soul_guardian_check", "soul_guardian_diff", "soul_guardian_history", "soul_guardian_approve", "soul_guardian_restore"],
     "jobs": ["soul-guardian.check"],
     "commands": ["soul-guardian"]
   }

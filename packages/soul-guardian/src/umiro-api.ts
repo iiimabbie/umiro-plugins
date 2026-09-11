@@ -34,7 +34,7 @@ export interface PluginSetupContext {
   readonly state?: PluginStateStore;
   readonly services?: {
     readonly discord?: {
-      createButtonSet?(input: { readonly channelId: string; readonly content: string; readonly allowedUserIds: readonly string[]; readonly expiresInMinutes?: number; readonly creatorPrincipalId?: string; readonly buttons: readonly { readonly id: string; readonly label: string; readonly style: "primary" | "secondary" | "success" | "danger"; readonly actionTool: string; readonly actionArgs: JsonObject }[]; readonly signal?: AbortSignal }): Promise<{ readonly messageId: string; readonly buttonSetId: string; readonly expiresAt: string }>;
+      createButtonSet?(input: { readonly channelId: string; readonly content: string; readonly allowedUserIds: readonly string[]; readonly expiresInMinutes?: number; readonly creatorPrincipalId?: string; readonly buttons: readonly { readonly id: string; readonly label: string; readonly style: "primary" | "secondary" | "success" | "danger"; readonly actionTool: string; readonly actionArgs: JsonObject; readonly disableAllOnComplete?: boolean }[]; readonly signal?: AbortSignal }): Promise<{ readonly messageId: string; readonly buttonSetId: string; readonly expiresAt: string }>;
       sendMessage(input: { readonly channelId: string; readonly content: string; readonly signal?: AbortSignal }): Promise<{ readonly messageId: string }>;
     };
   };
