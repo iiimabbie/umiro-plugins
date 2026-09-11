@@ -25,8 +25,6 @@ test("one Soul Guardian entry contributes tools, a job and a command", async () 
   assert.equal(policies.soul_guardian_check?.sideEffect, "none");
   assert.equal(policies.soul_guardian_approve?.interactionRequirement, "interactive_required");
   assert.equal(policies.soul_guardian_restore?.interactionRequirement, "interactive_required");
-  assert.equal(policies.soul_guardian_approve?.approvalRequirement, "required");
-  assert.equal(policies.soul_guardian_restore?.approvalRequirement, "required");
   assert.equal(policies.soul_guardian_diff?.sideEffect, "none");
   assert.equal(plugin.contributions.jobs?.[0]?.id, "soul-guardian.check");
   assert.equal(plugin.contributions.jobs?.[0]?.timezone, "Asia/Taipei");
@@ -57,7 +55,7 @@ test("one Soul Guardian entry contributes tools, a job and a command", async () 
   assert.equal(await readFile(join(workspace, "SOUL.md"), "utf8"), "persona");
 });
 
-test("drift notification publishes owner-only approval buttons when the service is available", async () => {
+test("drift notification publishes owner-only baseline buttons when the service is available", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "umiro-sg-buttons-"));
   await writeFile(join(workspace, "SOUL.md"), "persona");
   const buttonSets: Array<{ content: string; allowedUserIds: readonly string[]; buttons: readonly { label: string; actionTool: string; disableAllOnComplete?: boolean }[] }> = [];
@@ -81,7 +79,7 @@ test("drift notification publishes owner-only approval buttons when the service 
   assert.deepEqual(buttonSets[1]!.allowedUserIds, ["owner"]);
   assert.deepEqual(buttonSets[1]!.buttons.map(button => button.label), ["Approve SOUL.md"]);
   assert.deepEqual(buttonSets[1]!.buttons.map(button => button.actionTool), ["soul_guardian_approve"]);
-  assert.match(buttonSets[1]!.content, /changed since last approval/);
+  assert.match(buttonSets[1]!.content, /differ from their baseline/);
   assert.match(buttonSets[1]!.content, /SOUL\.md.*2 lines changed/);
 });
 

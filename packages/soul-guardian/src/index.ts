@@ -26,7 +26,7 @@ function approveResult(result: SoulGuardianApproveResult): string {
     ...result.approved.map(item => `✅ ${item.path}: sha256=${item.sha256.slice(0, 16)}...`),
     ...result.skipped.map(path => `⏭️ ${path}: already at baseline (skipped)`),
   ];
-  return lines.join("\n") || "No files needed approval; all selected files are already at baseline.";
+  return lines.join("\n") || "No files needed a new baseline; all selected files are already current.";
 }
 
 export function createPlugin(context: PluginSetupContext): PluginInstance {
@@ -61,10 +61,10 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
         const unapproved = batch.filter(item => item.status === "unapproved");
         const missing = batch.filter(item => item.status === "missing");
         const lines: string[] = [];
-        if (drift.length) lines.push("The following monitored files have changed since last approval:", "", ...drift.map(item => item.changedLines === undefined ? `• \`${item.path}\`` : `• \`${item.path}\` — ${item.changedLines} lines changed`));
+        if (drift.length) lines.push("The following monitored files differ from their baseline:", "", ...drift.map(item => item.changedLines === undefined ? `• \`${item.path}\`` : `• \`${item.path}\` — ${item.changedLines} lines changed`));
         if (unapproved.length) lines.push(...(lines.length ? [""] : []), "The following monitored files do not have an approved baseline:", "", ...unapproved.map(item => `• \`${item.path}\``));
         if (missing.length) lines.push(...(lines.length ? [""] : []), "The following monitored files are missing:", "", ...missing.map(item => `• \`${item.path}\``));
-        lines.push("", "Review the changes. Approve a new baseline with the buttons, or ask ümiro to inspect the diff and restore the file if the change is unwanted.");
+        lines.push("", "Review the changes. Set a new baseline with the buttons, or ask ümiro to inspect the diff and restore the file if the change is unwanted.");
         await createButtonSet({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — drift detected", lines), allowedUserIds: [ownerId], expiresInMinutes: 24 * 60, buttons, ...(signal ? { signal } : {}) });
       }
       const errors = actionable.filter(item => !item.currentSha256 && !item.approvedSha256);
@@ -75,7 +75,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     }
     await context.state!.writeAtomic(NOTIFIED_FINGERPRINT, new TextEncoder().encode(result.fingerprint));
   };
-  const tool = (name: string, description: string, capability: string, inputSchema: Record<string, unknown>, policy: Pick<ToolDefinition["policy"], "interactionRequirement" | "approvalRequirement" | "sideEffect">, run: (input: JsonObject) => Promise<ToolExecutionResult>): ToolDefinition => ({
+  const tool = (name: string, description: string, capability: string, inputSchema: Record<string, unknown>, policy: Pick<ToolDefinition["policy"], "interactionRequirement" | "sideEffect">, run: (input: JsonObject) => Promise<ToolExecutionResult>): ToolDefinition => ({
     name, description, inputSchema, policy: { capability, tier: "privileged", ...policy }, execute: run,
   });
   return {
@@ -84,8 +84,8 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
       tool("soul_guardian_check", "Run deterministic integrity checking and report drift. This never approves or restores files automatically.", CAP.check, { type: "object", additionalProperties: false, properties: {} }, { interactionRequirement: "not_required", sideEffect: "none" }, async () => { try { return readOk(await service.check()); } catch (e) { return fail(e); } }),
       tool("soul_guardian_diff", "Read a bounded unified diff between approved baselines and current monitored UTF-8 files. Use this before explaining drift or recommending approve/restore.", CAP.diff, { type: "object", additionalProperties: false, required: ["paths"], properties: { paths: { type: "array", minItems: 1, maxItems: 10, uniqueItems: true, items: { type: "string" } }, maxCharacters: { type: "integer", minimum: 1000, maximum: 20000 } } }, { interactionRequirement: "not_required", sideEffect: "none" }, async input => { try { return readOk(await service.diff(paths(input), typeof input.maxCharacters === "number" ? input.maxCharacters : undefined)); } catch (e) { return fail(e); } }),
       tool("soul_guardian_history", "List historical approved snapshots for a monitored file.", CAP.history, { type: "object", additionalProperties: false, required: ["path"], properties: { path: { type: "string" } } }, { interactionRequirement: "not_required", sideEffect: "none" }, async input => { try { return readOk(await service.history(String(input.path))); } catch (e) { return fail(e); } }),
-      tool("soul_guardian_approve", "Approve current monitored file contents as the new baseline. OWNER-ONLY: call only after the Owner explicitly requests approval or clicks an exact approve button; never self-approve changes based on your own judgment.", CAP.approve, { type: "object", additionalProperties: false, required: ["paths"], properties: { paths: { type: "array", minItems: 1, maxItems: 50, uniqueItems: true, items: { type: "string" } } } }, { interactionRequirement: "interactive_required", approvalRequirement: "required", sideEffect: "idempotent" }, async input => { try { return ok(approveResult(await service.approve(paths(input)))); } catch (e) { return fail(e); } }),
-      tool("soul_guardian_restore", "Restore monitored files from approved baselines after the Owner explicitly requests it; current contents are quarantined first. OWNER-ONLY.", CAP.restore, { type: "object", additionalProperties: false, required: ["paths"], properties: { paths: { type: "array", minItems: 1, maxItems: 50, uniqueItems: true, items: { type: "string" } } } }, { interactionRequirement: "interactive_required", approvalRequirement: "required", sideEffect: "idempotent" }, async input => { try { return ok(await service.restore(paths(input))); } catch (e) { return fail(e); } }),
+      tool("soul_guardian_approve", "Set current monitored file contents as the new baseline. OWNER-ONLY: call only after the Owner explicitly requests this in the current conversation or clicks an exact baseline button; never change a baseline based on your own judgment.", CAP.approve, { type: "object", additionalProperties: false, required: ["paths"], properties: { paths: { type: "array", minItems: 1, maxItems: 50, uniqueItems: true, items: { type: "string" } } } }, { interactionRequirement: "interactive_required", sideEffect: "idempotent" }, async input => { try { return ok(approveResult(await service.approve(paths(input)))); } catch (e) { return fail(e); } }),
+      tool("soul_guardian_restore", "Restore monitored files from approved baselines only after the Owner explicitly requests restoration in the current conversation; current contents are quarantined first. OWNER-ONLY; never restore based on your own judgment.", CAP.restore, { type: "object", additionalProperties: false, required: ["paths"], properties: { paths: { type: "array", minItems: 1, maxItems: 50, uniqueItems: true, items: { type: "string" } } } }, { interactionRequirement: "interactive_required", sideEffect: "idempotent" }, async input => { try { return ok(await service.restore(paths(input))); } catch (e) { return fail(e); } }),
     ], jobs: [{ id: "soul-guardian.check", schedule: config.schedule, ...(config.timezone ? { timezone: config.timezone } : {}), async run(job) { await runScheduledCheck(job.signal); } }],
     commands: [{ name: "soul-guardian", description: "Show Soul Guardian integrity status", ownerOnly: true, async execute() { return { items: await service.status() } as never; } }],
     },

@@ -13,7 +13,6 @@ export interface ToolPolicy {
   readonly capability: string;
   readonly tier: "common" | "sensitive" | "privileged";
   readonly interactionRequirement: "not_required" | "interactive_required";
-  readonly approvalRequirement?: "not_required" | "required";
   readonly sideEffect: "none" | "idempotent" | "non_idempotent";
 }
 export type ToolExecutionResult =
