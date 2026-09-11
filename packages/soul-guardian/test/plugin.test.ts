@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PluginStateStore } from "../src/umiro-api.js";
@@ -46,6 +46,10 @@ test("one Soul Guardian entry contributes tools, a job and a command", async () 
   await job.run({ jobId: job.id });
   assert.equal(notifications.length, 2);
   assert.match(notifications[1]!, /SOUL\.md.*drift/s);
+  const restore = plugin.contributions.tools!.find(tool => tool.name === "soul_guardian_restore")!;
+  const restored = await restore.execute({ paths: ["SOUL.md"] }, { operationId: "restore", signal: new AbortController().signal });
+  assert.equal(restored.ok, true);
+  assert.equal(await readFile(join(workspace, "SOUL.md"), "utf8"), "persona");
 });
 
 test("drift notification publishes owner-only approval buttons when the service is available", async () => {
