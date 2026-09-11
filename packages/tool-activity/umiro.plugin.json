@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 0,
+  "id": "tool-activity",
+  "version": "0.1.0",
+  "coreApi": "0",
+  "entry": "./dist/src/index.js",
+  "permissions": { "capabilities": ["discord.message.write", "discord.message.delete"], "visibility": { "kind": "all" }, "instructionAuthority": "none" },
+  "namespace": "tool-activity",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "editIntervalMs": { "type": "integer", "minimum": 100, "maximum": 10000, "description": "Minimum spacing between edits of one activity message." },
+      "maxCharacters": { "type": "integer", "minimum": 200, "maximum": 2000, "description": "Message length cap; older lines are dropped from the top when exceeded." }
+    }
+  },
+  "contributes": { "hooks": ["tool-activity.tool_started", "tool-activity.tool_completed", "tool-activity.step_completed", "tool-activity.run_completed", "tool-activity.delivery_completed", "tool-activity.delivery_failed"] }
+}
