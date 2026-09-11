@@ -9,6 +9,8 @@ export interface SoulGuardianConfig {
   readonly workspacePath: string;
   readonly targets: readonly SoulGuardianTarget[];
   readonly schedule: string;
+  readonly timezone?: string;
+  readonly channelId?: string;
 }
 
 export type SoulGuardianStatus = "ok" | "drift" | "missing" | "unapproved" | "ignored";

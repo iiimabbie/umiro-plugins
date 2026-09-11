@@ -7,8 +7,7 @@ It contributes five tools, the `soul-guardian.check` scheduled job, and the owne
 Install from the plugin repository:
 
 ```bash
-umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace soul-guardian
-umiro plugin configure https://github.com/iiimabbie/umiro-plugins --workspace soul-guardian --config '{"workspacePath":"/path/to/workspace","schedule":"0 8 * * *","targets":[{"path":"SOUL.md","mode":"alert"}]}'
+umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace soul-guardian --config '{"schedule":"0 8,20 * * *","timezone":"Asia/Taipei","channelId":"123456789012345678","targets":[{"path":"SOUL.md","mode":"alert"},{"path":"OWNER.md","mode":"restore"}]}'
 ```
 
-Only complete file names listed in `targets` are monitored. Configuration, baselines, and personal data stay in the local Umiro installation.
+The installer supplies `workspacePath`. `schedule` is a cron expression, `timezone` is an optional IANA timezone, and `channelId` is the optional Discord channel or thread that receives deduplicated drift and restore notifications. Only complete file names listed in `targets` are monitored; each uses `restore`, `alert`, or `ignore` mode. Configuration, baselines, and personal data stay in the local Umiro installation.
