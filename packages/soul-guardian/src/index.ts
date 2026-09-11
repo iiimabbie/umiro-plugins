@@ -41,7 +41,17 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
       "",
       "請檢查變更；需要接受新版或還原時，可要求 ümiro 執行 Soul Guardian 操作。",
     ];
-    await discord.sendMessage({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — 偵測到檔案狀態異常", lines), ...(signal ? { signal } : {}) });
+    const ownerId = context.getSecret("UMIRO_OWNER_DISCORD_ID");
+    const createButtonSet = discord.createButtonSet;
+    const buttons = createButtonSet && ownerId ? [
+      { id: "approve", label: "接受目前版本", style: "success" as const, actionTool: "soul_guardian_approve", actionArgs: { paths: actionable.map(item => item.path) } },
+      { id: "restore", label: "還原已核准版本", style: "danger" as const, actionTool: "soul_guardian_restore", actionArgs: { paths: actionable.map(item => item.path) } },
+    ] : undefined;
+    if (buttons && createButtonSet && ownerId) {
+      await createButtonSet({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — 偵測到檔案狀態異常", lines), allowedUserIds: [ownerId], expiresInMinutes: 24 * 60, buttons, ...(signal ? { signal } : {}) });
+    } else {
+      await discord.sendMessage({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — 偵測到檔案狀態異常", lines), ...(signal ? { signal } : {}) });
+    }
     await context.state!.writeAtomic(NOTIFIED_FINGERPRINT, new TextEncoder().encode(result.fingerprint));
   };
   const tool = (name: string, description: string, capability: string, inputSchema: Record<string, unknown>, policy: Pick<ToolDefinition["policy"], "interactionRequirement" | "approvalRequirement" | "sideEffect">, run: (input: JsonObject) => Promise<ToolExecutionResult>): ToolDefinition => ({

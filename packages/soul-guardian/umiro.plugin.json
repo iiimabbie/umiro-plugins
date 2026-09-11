@@ -1,15 +1,16 @@
 {
   "schemaVersion": 0,
   "id": "soul-guardian",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "coreApi": "0",
   "entry": "./dist/src/index.js",
   "permissions": {
-    "capabilities": ["soul_guardian.status", "soul_guardian.check", "soul_guardian.history", "soul_guardian.approve", "soul_guardian.restore", "discord.message.write"],
+    "capabilities": ["soul_guardian.status", "soul_guardian.check", "soul_guardian.history", "soul_guardian.approve", "soul_guardian.restore", "discord.message.write", "discord.button.write"],
     "visibility": { "kind": "all" },
     "instructionAuthority": "none"
   },
   "namespace": "soul-guardian",
+  "requiredSecrets": ["UMIRO_OWNER_DISCORD_ID"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
