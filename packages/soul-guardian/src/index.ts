@@ -43,11 +43,13 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     ];
     const ownerId = context.getSecret("UMIRO_OWNER_DISCORD_ID");
     const createButtonSet = discord.createButtonSet;
+    const approvePaths = actionable.filter(item => item.currentSha256).map(item => item.path);
+    const restorePaths = actionable.filter(item => item.approvedSha256).map(item => item.path);
     const buttons = createButtonSet && ownerId ? [
-      { id: "approve", label: "接受目前版本", style: "success" as const, actionTool: "soul_guardian_approve", actionArgs: { paths: actionable.map(item => item.path) } },
-      { id: "restore", label: "還原已核准版本", style: "danger" as const, actionTool: "soul_guardian_restore", actionArgs: { paths: actionable.map(item => item.path) } },
-    ] : undefined;
-    if (buttons && createButtonSet && ownerId) {
+      ...(approvePaths.length ? [{ id: "approve", label: "接受目前版本", style: "success" as const, actionTool: "soul_guardian_approve", actionArgs: { paths: approvePaths } }] : []),
+      ...(restorePaths.length ? [{ id: "restore", label: "還原已核准版本", style: "danger" as const, actionTool: "soul_guardian_restore", actionArgs: { paths: restorePaths } }] : []),
+    ] : [];
+    if (buttons.length && createButtonSet && ownerId) {
       await createButtonSet({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — 偵測到檔案狀態異常", lines), allowedUserIds: [ownerId], expiresInMinutes: 24 * 60, buttons, ...(signal ? { signal } : {}) });
     } else {
       await discord.sendMessage({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — 偵測到檔案狀態異常", lines), ...(signal ? { signal } : {}) });

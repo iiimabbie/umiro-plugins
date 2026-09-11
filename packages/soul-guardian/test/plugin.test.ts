@@ -62,6 +62,10 @@ test("drift notification publishes owner-only approval buttons when the service 
   });
   await plugin.start?.();
   await plugin.contributions.jobs![0]!.run({ jobId: "soul-guardian.check" });
+  assert.deepEqual(buttonSets[0]!.buttons.map(button => button.actionTool), ["soul_guardian_approve"]);
+  const approve = plugin.contributions.tools!.find(tool => tool.name === "soul_guardian_approve")!;
+  await approve.execute({ paths: ["SOUL.md"] }, { operationId: "approve", signal: new AbortController().signal });
+  await plugin.contributions.jobs![0]!.run({ jobId: "soul-guardian.check" });
   await writeFile(join(workspace, "SOUL.md"), "changed");
   await plugin.contributions.jobs![0]!.run({ jobId: "soul-guardian.check" });
   assert.equal(buttonSets.length, 2);
