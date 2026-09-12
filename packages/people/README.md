@@ -5,8 +5,8 @@ External Umiro V2 recognition plugin backed by `PEOPLE.md`. It selects relevant 
 Install from the plugin repository:
 
 ```bash
-umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace people
-umiro plugin configure https://github.com/iiimabbie/umiro-plugins --workspace people --config '{"workspacePath":"/path/to/workspace","recentTurns":8,"inlineLimit":12000}'
+umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace people
+umo plugin configure https://github.com/iiimabbie/umiro-plugins --workspace people --config '{"workspacePath":"/path/to/workspace","recentTurns":8,"inlineLimit":12000}'
 ```
 
 ## PEOPLE.md format

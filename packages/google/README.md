@@ -5,7 +5,7 @@ External Umiro V2 plugin for Gmail, Google Calendar, Google Tasks and Google Dri
 Install from the plugin repository:
 
 ```bash
-umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace google
+umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace google
 ```
 
 ## Setup

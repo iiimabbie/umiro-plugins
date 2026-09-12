@@ -7,7 +7,7 @@ It contributes six tools, including a bounded UTF-8 baseline diff, the `soul-gua
 Install from the plugin repository:
 
 ```bash
-umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace soul-guardian --config '{"schedule":"0 8,20 * * *","timezone":"Asia/Taipei","channelId":"123456789012345678","targets":[{"path":"SOUL.md"},{"path":"OWNER.md"}]}'
+umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace soul-guardian --config '{"schedule":"0 8,20 * * *","timezone":"Asia/Taipei","channelId":"123456789012345678","targets":[{"path":"SOUL.md"},{"path":"OWNER.md"}]}'
 ```
 
 The installer supplies `workspacePath`. `schedule` is a cron expression, `timezone` is an optional IANA timezone, and `channelId` is the optional Discord channel or thread that receives deduplicated drift notifications. Only complete file names listed in `targets` are monitored. Scheduled checks are always alert-only and never modify files; the Owner can ask the agent to inspect `soul_guardian_diff`, approve a new baseline, or restore an approved snapshot at any time. Configuration, baselines, and personal data stay in the local Umiro installation.

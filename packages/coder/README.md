@@ -6,7 +6,7 @@ bounded implementation or investigation task inside the agent workspace.
 Install from the plugin repository:
 
 ```bash
-umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace coder
+umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace coder
 ```
 
 There is nothing to configure. Once the plugin is enabled, the supervising agent delegates

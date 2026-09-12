@@ -7,7 +7,7 @@ it updated as an accumulated list.
 Install from the plugin repository:
 
 ```bash
-umiro plugin install https://github.com/iiimabbie/umiro-plugins --workspace tool-activity
+umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace tool-activity
 ```
 
 ## Behaviour
