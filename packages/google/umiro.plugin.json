@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 0,
+  "id": "google",
+  "version": "0.1.0",
+  "coreApi": "0",
+  "entry": "./dist/src/index.js",
+  "permissions": {
+    "capabilities": ["google.gmail.read", "google.gmail.write", "google.calendar.read", "google.calendar.write", "google.tasks.read", "google.tasks.write", "google.drive.read", "google.drive.write"],
+    "visibility": { "kind": "all" },
+    "instructionAuthority": "none"
+  },
+  "namespace": "google",
+  "requiredSecrets": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+  "configSchema": { "type": "object", "additionalProperties": false, "properties": {} },
+  "contributes": {
+    "tools": [
+      "google_gmail_search", "google_gmail_read", "google_gmail_send", "google_gmail_create_draft",
+      "google_calendar_list_events", "google_calendar_create_event", "google_calendar_update_event", "google_calendar_delete_event",
+      "google_tasks_list", "google_tasks_create", "google_tasks_complete", "google_tasks_delete",
+      "google_drive_search", "google_drive_read", "google_drive_upload"
+    ],
+    "commands": ["google-auth"],
+    "policy": [
+      "google_gmail_send and google_calendar_delete_event are irreversible; confirm the recipient or event with the owner first, and prefer google_gmail_create_draft when wording should be reviewed.",
+      "google_tasks_delete removes a task permanently; marking it done with google_tasks_complete is usually what is wanted."
+    ]
+  }
+}
