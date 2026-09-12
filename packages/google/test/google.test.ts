@@ -224,6 +224,6 @@ test("API failures map to tool errors with retryability", async () => {
 
 test("health reports configuration and authorization state", async () => {
   assert.deepEqual(await setup(() => ({})).plugin.health?.(), { status: "ok" });
-  assert.equal((await setup(() => ({}), { authorized: false }).plugin.health?.())?.status, "degraded");
+  assert.deepEqual(await setup(() => ({}), { authorized: false }).plugin.health?.(), { status: "ok", detail: "not authorized; run /google-auth" });
   assert.match(String((await setup(() => ({}), { configured: false }).plugin.health?.())?.detail), /GOOGLE_CLIENT_ID/);
 });

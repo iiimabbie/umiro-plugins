@@ -102,7 +102,7 @@ export function createPlugin(context: PluginSetupContext, options: CreatePluginO
     contributions: { tools, commands: [authCommand] },
     async health() {
       if (!auth.configured) return { status: "degraded", detail: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set" };
-      return (await auth.isAuthorized()) ? { status: "ok" } : { status: "degraded", detail: "not authorized; run /google-auth" };
+      return (await auth.isAuthorized()) ? { status: "ok" } : { status: "ok", detail: "not authorized; run /google-auth" };
     },
   };
 }
