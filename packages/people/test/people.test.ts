@@ -11,6 +11,7 @@ test("parses PEOPLE sections and Discord identities", () => {
   assert.equal(people[0]?.heading, "小明");
   assert.equal(people[0]?.discordId, "123");
   assert.deepEqual(people[0]?.aliases, ["小明", "Ming", "阿明"]);
+  assert.equal(parsePeople("<people>\n<!--\n## Example\n- Discord ID: 999\n-->\n</people>").length, 0);
 });
 
 const request = (owner: boolean, externalId: string, prompt: string): ContextRequest => ({
@@ -62,12 +63,14 @@ test("an unwritable workspace degrades seeding instead of blocking startup", { s
 test("plugin tools atomically add, update and remove PEOPLE entries", async () => {
   const root = await mkdtemp(join(tmpdir(), "umiro-people-"));
   try {
-    await writeFile(join(root, "PEOPLE.md"), "# PEOPLE\n");
+    await writeFile(join(root, "PEOPLE.md"), "<people>\n</people>\n");
     const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, logger: { debug() {}, info() {}, warn() {}, error() {} }, getSecret: () => undefined });
     await plugin.start?.();
     const tools = new Map(plugin.contributions.tools?.map(tool => [tool.name, tool]));
     const toolContext = { execution: request(true, "1", "").execution, operationId: "op", idempotencyKey: "key", signal: new AbortController().signal };
     assert.equal((await tools.get("people_add")!.execute({ content: "## Alice\n- Discord ID: 1\n- 別名: [\"Ally\"]" }, toolContext)).ok, true);
+    const afterAdd = await readFile(join(root, "PEOPLE.md"), "utf8");
+    assert.ok(afterAdd.indexOf("## Alice") < afterAdd.indexOf("</people>"), "new people entries must remain inside the people tag");
     assert.equal((await tools.get("people_update")!.execute({ oldText: "Ally", newText: "Alicia" }, toolContext)).ok, true);
     assert.match(await readFile(join(root, "PEOPLE.md"), "utf8"), /Alicia/);
     assert.equal((await tools.get("people_remove")!.execute({ text: "## Alice\n- Discord ID: 1\n- 別名: [\"Alicia\"]" }, toolContext)).ok, true);

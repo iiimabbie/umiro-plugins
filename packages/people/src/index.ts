@@ -25,7 +25,7 @@ export function parseAliasValue(value: string): string[] {
 }
 
 export function parsePeople(content: string): Person[] {
-  const body = content.replace(/^\s*<people>\s*/i, "").replace(/\s*<\/people>\s*$/i, "");
+  const body = content.replace(/<!--[\s\S]*?-->/g, "").replace(/^\s*<people>\s*/i, "").replace(/\s*<\/people>\s*$/i, "");
   const lines = body.split(/\r?\n/); const result: Person[] = []; let start = -1;
   const push = (end: number) => {
     if (start < 0) return;
@@ -118,7 +118,9 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
       const entry = String(input.content).trim(); if (!entry.startsWith("## ")) throw new TypeError("content must start with a level-two heading");
       const current = await read(); const parsed = parsePeople(entry)[0]; if (!parsed) throw new TypeError("invalid person section");
       if (parsePeople(current).some(person => person.heading === parsed.heading || (parsed.discordId && person.discordId === parsed.discordId))) throw new Error("person already exists; use people_update");
-      await writeAtomic(`${current.trim()}\n\n${entry}`); return { added: parsed.heading };
+      const closingTag = current.match(/\s*<\/people>\s*$/i);
+      const next = closingTag ? `${current.slice(0, closingTag.index).trimEnd()}\n\n${entry}\n</people>` : `${current.trim()}\n\n${entry}`;
+      await writeAtomic(next); return { added: parsed.heading };
     } }),
     tool({ name: "people_update", description: "Replace one exact substring in PEOPLE.md with new text.", inputSchema: { type: "object", additionalProperties: false, required: ["oldText", "newText"], properties: { oldText: { type: "string", minLength: 1 }, newText: { type: "string" } } }, policy: { capability: "people.write", tier: "common", interactionRequirement: "not_required", sideEffect: "idempotent" }, async execute(input) {
       const current = await read(); const oldText = String(input.oldText); const matches = current.split(oldText).length - 1; if (matches !== 1) throw new Error(matches === 0 ? "oldText not found" : "oldText must match exactly once");
