@@ -42,7 +42,7 @@ test("plugin seeds PEOPLE.md from its template and never overwrites an existing 
     await plugin(seeded).start?.();
     const created = await readFile(join(seeded, "PEOPLE.md"), "utf8");
     assert.match(created, /^<people>/);
-    assert.ok(parsePeople(created).length > 0, "template must parse as PEOPLE entries");
+    assert.equal(parsePeople(created).length, 0, "commented examples must not become real people entries");
 
     await writeFile(join(existing, "PEOPLE.md"), "# PEOPLE\n\n## Kept\n");
     await plugin(existing).start?.();
