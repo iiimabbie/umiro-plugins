@@ -90,8 +90,16 @@ export function createPlugin(context: PluginSetupContext, options: CreatePluginO
       const callback = str(input.callback);
       if (!callback) {
         if (await auth.isAuthorized()) return { text: "Google API is already authorized." };
-        if (!auth.configured) return { text: "Set the GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET secrets and restart first." };
-        return { text: `Open this link to authorize:\n${auth.authorizationUrl()}\n\nAfter approving, the browser lands on \`http://127.0.0.1/?code=...\`. Paste the whole address back:\n\`/google-auth callback:<paste the full URL>\`` };
+        const url = auth.authorizationUrl();
+        return {
+          content: "請點擊下方卡片的「驗證」連結完成 Google 授權。",
+          embed: {
+            title: "Google 授權",
+            description: `[驗證](${url})`,
+            color: 0x4285f4,
+            fields: [{ name: "完成授權後", value: "瀏覽器會跳到 `http://127.0.0.1/?code=...`，請把完整網址貼回 `/google-auth callback:<網址>`。" }],
+          },
+        };
       }
       try { await auth.exchangeCode(callback); context.logger?.info("google.authorized", "Google OAuth completed"); return { text: "Google API authorized." }; }
       catch (error) { return { text: `Authorization failed: ${error instanceof Error ? error.message : String(error)}` }; }
@@ -101,7 +109,6 @@ export function createPlugin(context: PluginSetupContext, options: CreatePluginO
   return {
     contributions: { tools, commands: [authCommand] },
     async health() {
-      if (!auth.configured) return { status: "ok", detail: "not configured; set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET before use" };
       return (await auth.isAuthorized()) ? { status: "ok" } : { status: "ok", detail: "not authorized; run /google-auth" };
     },
   };

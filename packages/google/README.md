@@ -10,9 +10,15 @@ umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace google
 
 ## Setup
 
-1. Create an OAuth client of type **Desktop app** in the Google Cloud console and enable the Gmail, Calendar, Tasks and Drive APIs for the project.
-2. Provide the client credentials as the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the gateway environment.
-3. As the owner, run `/google-auth` in Discord. The reply contains an authorization link; approve it, then paste the full address the browser lands on (`http://127.0.0.1/?code=...`) back as `/google-auth callback:<url>`.
+As the owner, run `/google-auth` in Discord. The plugin ships with Umiro's
+Desktop OAuth application identity, so users do not need a Google Cloud
+project or client credentials. Approve the returned authorization link, then
+paste the full address the browser lands on (`http://127.0.0.1/?code=...`)
+back as `/google-auth callback:<url>`.
+
+Google installed-app credentials identify the application but cannot be kept
+confidential in a distributed desktop/open-source client. User refresh tokens
+remain private in each Umiro installation's plugin state.
 
 The refresh token is kept in the plugin state store under `oauth/token.json`; access tokens are refreshed automatically. The plugin has no configuration.
 

@@ -10,6 +10,11 @@ export const SCOPES = [
 ];
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+// Google treats installed-app credentials as public application identity. They
+// ship with the plugin so end users can authorize without creating a Cloud
+// project first, just like other desktop OAuth clients.
+const BUILTIN_CLIENT_ID = "734187234971-0dlvce4j0qfu63oat0u7pmhrhen3i8h2.apps.googleusercontent.com";
+const BUILTIN_CLIENT_SECRET = "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";
 /** Access tokens are refreshed this long before Google's reported expiry. */
 const EXPIRY_MARGIN_MS = 60_000;
 
@@ -54,12 +59,16 @@ export class GoogleOAuth {
     this.now = options.now ?? Date.now;
   }
 
-  get configured(): boolean { return Boolean(this.options.clientId && this.options.clientSecret); }
+  get configured(): boolean { return true; }
 
   private credentials(): { clientId: string; clientSecret: string } {
-    const { clientId, clientSecret } = this.options;
-    if (!clientId || !clientSecret) throw new GoogleAuthError("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set", "not_configured");
-    return { clientId, clientSecret };
+    const clientId = this.options.clientId?.trim();
+    const clientSecret = this.options.clientSecret?.trim();
+    if (clientId || clientSecret) {
+      if (!clientId || !clientSecret) throw new GoogleAuthError("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be overridden together", "not_configured");
+      return { clientId, clientSecret };
+    }
+    return { clientId: BUILTIN_CLIENT_ID, clientSecret: BUILTIN_CLIENT_SECRET };
   }
 
   private store(): PluginStateStore {

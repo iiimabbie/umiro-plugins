@@ -79,8 +79,9 @@ test("/google-auth walks the V1 flow and stores the refresh token in plugin stat
   const auth = command("google-auth");
   assert.equal(auth.ownerOnly, true);
   const prompt = await auth.execute({});
-  assert.match(String(prompt.text), /accounts\.google\.com\/o\/oauth2\/v2\/auth\?client_id=client-id/);
-  assert.match(String(prompt.text), /access_type=offline/);
+  assert.equal(prompt.content, "請點擊下方卡片的「驗證」連結完成 Google 授權。");
+  assert.match(String((prompt.embed as JsonObject).description), /accounts\.google\.com\/o\/oauth2\/v2\/auth\?client_id=client-id/);
+  assert.match(String((prompt.embed as JsonObject).description), /access_type=offline/);
   const done = await auth.execute({ callback: "http://127.0.0.1/?code=4%2Fabc&scope=x" });
   assert.equal(done.text, "Google API authorized.");
   const exchange = calls.find(call => call.url.hostname === "oauth2.googleapis.com");
@@ -89,9 +90,10 @@ test("/google-auth walks the V1 flow and stores the refresh token in plugin stat
   assert.equal((await auth.execute({})).text, "Google API is already authorized.");
 });
 
-test("/google-auth explains missing secrets and failed exchanges", async () => {
-  const unconfigured = setup(() => ({}), { authorized: false, configured: false });
-  assert.match(String((await unconfigured.command("google-auth").execute({})).text), /GOOGLE_CLIENT_ID/);
+test("/google-auth needs no user-supplied credentials and explains failed exchanges", async () => {
+  const zeroConfig = setup(() => ({}), { authorized: false, configured: false });
+  const zeroConfigPrompt = await zeroConfig.command("google-auth").execute({});
+  assert.match(String((zeroConfigPrompt.embed as JsonObject).description), /accounts\.google\.com\/o\/oauth2\/v2\/auth\?client_id=/);
   const failing = setup(() => Response.json({ error: "invalid_grant", error_description: "Bad code" }, { status: 400 }), { authorized: false });
   assert.match(String((await failing.command("google-auth").execute({ callback: "bad" })).text), /Authorization failed: .*Bad code/);
   assert.equal(extractCode("not a url"), "not a url");
@@ -105,11 +107,11 @@ test("tools fail closed before authorization", async () => {
   assert.equal(calls.length, 0);
 });
 
-test("tools report optional OAuth credentials only when Google is used", async () => {
+test("tools use the built-in OAuth app when user secrets are absent", async () => {
   const { tool, calls } = setup(() => ({}), { authorized: false, configured: false });
   const result = await tool("google_tasks_list").execute({}, execution);
   assert.equal(result.ok, false);
-  if (!result.ok) { assert.equal(result.error.code, "google_not_configured"); assert.match(result.error.message, /GOOGLE_CLIENT_ID/); assert.equal(result.effectStatus, "not_applicable"); }
+  if (!result.ok) { assert.equal(result.error.code, "google_not_authorized"); assert.equal(result.effectStatus, "not_applicable"); }
   assert.equal(calls.length, 0);
 });
 
@@ -233,5 +235,5 @@ test("API failures map to tool errors with retryability", async () => {
 test("health reports configuration and authorization state", async () => {
   assert.deepEqual(await setup(() => ({})).plugin.health?.(), { status: "ok" });
   assert.deepEqual(await setup(() => ({}), { authorized: false }).plugin.health?.(), { status: "ok", detail: "not authorized; run /google-auth" });
-  assert.deepEqual(await setup(() => ({}), { configured: false }).plugin.health?.(), { status: "ok", detail: "not configured; set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET before use" });
+  assert.deepEqual(await setup(() => ({}), { authorized: false, configured: false }).plugin.health?.(), { status: "ok", detail: "not authorized; run /google-auth" });
 });
