@@ -105,6 +105,14 @@ test("tools fail closed before authorization", async () => {
   assert.equal(calls.length, 0);
 });
 
+test("tools report optional OAuth credentials only when Google is used", async () => {
+  const { tool, calls } = setup(() => ({}), { authorized: false, configured: false });
+  const result = await tool("google_tasks_list").execute({}, execution);
+  assert.equal(result.ok, false);
+  if (!result.ok) { assert.equal(result.error.code, "google_not_configured"); assert.match(result.error.message, /GOOGLE_CLIENT_ID/); assert.equal(result.effectStatus, "not_applicable"); }
+  assert.equal(calls.length, 0);
+});
+
 test("expired access tokens are refreshed once and persisted", async () => {
   let now = authorizedToken.expiry_date + 1;
   const { tool, state, calls } = setup(call => call.url.hostname === "oauth2.googleapis.com" ? { access_token: "access-3", expires_in: 3600 } : { items: [] }, { now: () => now });
@@ -225,5 +233,5 @@ test("API failures map to tool errors with retryability", async () => {
 test("health reports configuration and authorization state", async () => {
   assert.deepEqual(await setup(() => ({})).plugin.health?.(), { status: "ok" });
   assert.deepEqual(await setup(() => ({}), { authorized: false }).plugin.health?.(), { status: "ok", detail: "not authorized; run /google-auth" });
-  assert.match(String((await setup(() => ({}), { configured: false }).plugin.health?.())?.detail), /GOOGLE_CLIENT_ID/);
+  assert.deepEqual(await setup(() => ({}), { configured: false }).plugin.health?.(), { status: "ok", detail: "not configured; set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET before use" });
 });

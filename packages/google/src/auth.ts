@@ -126,6 +126,7 @@ export class GoogleOAuth {
 
   /** A valid access token, refreshed through the stored refresh token when stale. */
   async accessToken(): Promise<string> {
+    this.credentials();
     const token = await this.loadToken();
     if (!token) throw new GoogleAuthError("Google API is not authorized; run /google-auth first", "not_authorized");
     if (token.access_token && token.expiry_date !== undefined && token.expiry_date - EXPIRY_MARGIN_MS > this.now()) return token.access_token;

@@ -10,7 +10,7 @@
     "instructionAuthority": "none"
   },
   "namespace": "google",
-  "requiredSecrets": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+  "optionalSecrets": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
   "configSchema": { "type": "object", "additionalProperties": false, "properties": {} },
   "contributes": {
     "tools": [
