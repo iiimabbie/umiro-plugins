@@ -14,7 +14,7 @@ umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace tool-a
 
 - Only Runs whose delivery destination is `{ "kind": "discord", "channelId": ... }` are shown; every other Run is ignored.
 - Lines show the actual tool name: `→ <tool>` while executing, `✓ <tool>` when the operation succeeded, `✗ <tool>` for any other outcome.
-- Assistant text published between model steps (`step.completed` with `assistantText`, capped at 300 characters by the host) is inserted as a `> ` quote line.
+- Assistant text and final replies are never included in the activity message.
 - The message is capped at `maxCharacters` (default 1900); older lines are dropped from the top so the newest activity stays visible.
 - Edits are serialized per Run and spaced at least `editIntervalMs` (default 1000 ms) apart. Progress hooks return without waiting for Discord, so rate limits never slow tool execution, and every Discord failure is only logged.
 - The temporary message is never edited into the final reply. The final reply is a separate message sent by the host.

@@ -14,5 +14,5 @@
       "maxCharacters": { "type": "integer", "minimum": 200, "maximum": 2000, "description": "Message length cap; older lines are dropped from the top when exceeded." }
     }
   },
-  "contributes": { "hooks": ["tool-activity.tool_started", "tool-activity.tool_completed", "tool-activity.step_completed", "tool-activity.run_completed", "tool-activity.delivery_completed", "tool-activity.delivery_failed"] }
+  "contributes": { "hooks": ["tool-activity.tool_started", "tool-activity.tool_completed", "tool-activity.run_completed", "tool-activity.delivery_completed", "tool-activity.delivery_failed"] }
 }

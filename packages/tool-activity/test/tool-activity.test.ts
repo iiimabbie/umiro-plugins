@@ -51,17 +51,17 @@ test("manifest hooks match the plugin instance", async () => {
   const manifest = JSON.parse(await readFile(fileURLToPath(new URL("../../umiro.plugin.json", import.meta.url)), "utf8")) as { contributes: { hooks: string[] } };
   const plugin = createPlugin({ pluginId: "tool-activity", namespace: "tool-activity", permissionCeiling: {}, config: {}, services: { discord: fakeDiscord().discord }, getSecret: () => undefined });
   assert.deepEqual(plugin.contributions.hooks?.map(hook => hook.id), manifest.contributes.hooks);
-  assert.deepEqual(plugin.contributions.hooks?.map(hook => hook.event), ["tool.started", "tool.completed", "step.completed", "run.completed", "delivery.completed", "delivery.failed"]);
+  assert.deepEqual(plugin.contributions.hooks?.map(hook => hook.event), ["tool.started", "tool.completed", "run.completed", "delivery.completed", "delivery.failed"]);
   assert.throws(() => createPlugin({ pluginId: "tool-activity", namespace: "tool-activity", permissionCeiling: {}, config: {}, getSecret: () => undefined }), /Discord plugin service/);
 });
 
 test("renderActivity formats lines and keeps the tail under the cap", () => {
   assert.equal(renderActivity([], 100), "…");
-  assert.equal(renderActivity([{ kind: "tool", operationId: "1", tool: "web_fetch", status: "running" }, { kind: "note", text: "checking" }, { kind: "tool", operationId: "2", tool: "read_file", status: "ok" }, { kind: "tool", operationId: "3", tool: "bash", status: "err" }], 1900), "→ web_fetch\n> checking\n✓ read_file\n✗ bash");
+  assert.equal(renderActivity([{ kind: "tool", operationId: "1", tool: "web_fetch", status: "running" }, { kind: "tool", operationId: "2", tool: "read_file", status: "ok" }, { kind: "tool", operationId: "3", tool: "bash", status: "err" }], 1900), "→ web_fetch\n✓ read_file\n✗ bash");
   const long = Array.from({ length: 10 }, (_, index) => ({ kind: "tool" as const, operationId: String(index), tool: `tool_${index}`, status: "ok" as const }));
   const rendered = renderActivity(long, 30);
   assert.ok(rendered.length <= 30 && rendered.endsWith("✓ tool_9") && !rendered.includes("tool_0"));
-  assert.equal(renderActivity([{ kind: "note", text: "x".repeat(50) }], 10), "x".repeat(10));
+  assert.equal(renderActivity([{ kind: "tool", operationId: "long", tool: "x".repeat(50), status: "running" }], 10), "x".repeat(10));
 });
 
 test("first tool posts the message, later events edit it under the throttle, and delivered final output deletes it", async () => {
@@ -70,17 +70,16 @@ test("first tool posts the message, later events edit it under the throttle, and
   await tracker.idle();
   assert.deepEqual(calls, [{ op: "send", channelId: "chan-1", content: "→ web_fetch" }]);
   tracker.toolCompleted(toolCompleted("run-1", "op-1", "web_fetch"));
-  tracker.stepCompleted({ ...discordRun("run-1"), stepKind: "model_call", assistantText: "Now reading the file" });
   tracker.toolStarted(toolStarted("run-1", "op-2", "read_file"));
   await tracker.idle();
   assert.equal(calls.length, 1, "edits are throttled inside the interval");
   await clock.advance(1000);
   await tracker.idle();
-  assert.deepEqual(calls.at(-1), { op: "edit", channelId: "chan-1", messageId: "msg-1", content: "✓ web_fetch\n> Now reading the file\n→ read_file" });
+  assert.deepEqual(calls.at(-1), { op: "edit", channelId: "chan-1", messageId: "msg-1", content: "✓ web_fetch\n→ read_file" });
   tracker.toolCompleted(toolCompleted("run-1", "op-2", "read_file", "failed"));
   tracker.runCompleted({ ...discordRun("run-1"), state: "succeeded" });
   await tracker.idle();
-  assert.deepEqual(calls.at(-1), { op: "edit", channelId: "chan-1", messageId: "msg-1", content: "✓ web_fetch\n> Now reading the file\n✗ read_file" });
+  assert.deepEqual(calls.at(-1), { op: "edit", channelId: "chan-1", messageId: "msg-1", content: "✓ web_fetch\n✗ read_file" });
   assert.ok(!calls.some(call => call.op === "delete"), "run completion does not prove final delivery");
   await tracker.deliveryCompleted({ ...discordRun("run-1"), deliveryId: "delivery-1", state: "delivered" });
   assert.deepEqual(calls.at(-1), { op: "delete", channelId: "chan-1", messageId: "msg-1" });
@@ -116,7 +115,6 @@ test("runs without a Discord destination and runs without tools are ignored", as
   const { clock, calls, tracker } = setup();
   tracker.toolStarted({ runId: "run-s", destination: { kind: "scheduler" }, operationId: "op-1", tool: "bash", state: "executing" });
   tracker.toolStarted({ runId: "run-n", operationId: "op-1", tool: "bash", state: "executing" });
-  tracker.stepCompleted({ ...discordRun("run-d"), assistantText: "thinking" });
   tracker.runCompleted({ ...discordRun("run-d"), state: "succeeded" });
   await tracker.idle(); await clock.advance(5000); await tracker.idle();
   assert.deepEqual(calls, []);

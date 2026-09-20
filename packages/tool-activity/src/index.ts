@@ -58,18 +58,9 @@ export class ActivityTracker {
     const run = this.runs.get(runId);
     if (!run || run.finished) return;
     const status = payload.state === "succeeded" ? "ok" : "err";
-    const line = run.lines.find(item => item.kind === "tool" && item.operationId === operationId);
-    if (line && line.kind === "tool") line.status = status;
+    const line = run.lines.find(item => item.operationId === operationId);
+    if (line) line.status = status;
     else { const tool = str(payload.tool); if (tool) run.lines.push({ kind: "tool", operationId, tool, status }); else return; }
-    this.markDirty(runId, run);
-  }
-
-  stepCompleted(payload: JsonObject): void {
-    const runId = str(payload.runId); const text = str(payload.assistantText);
-    if (!runId || !text) return;
-    const run = this.runs.get(runId);
-    if (!run || run.finished) return;
-    run.lines.push({ kind: "note", text });
     this.markDirty(runId, run);
   }
 
@@ -177,7 +168,6 @@ export function createPlugin(context: PluginSetupContext, deps: { readonly now?:
     contributions: { hooks: [
       hook("tool_started", "tool.started", payload => tracker.toolStarted(payload)),
       hook("tool_completed", "tool.completed", payload => tracker.toolCompleted(payload)),
-      hook("step_completed", "step.completed", payload => tracker.stepCompleted(payload)),
       hook("run_completed", "run.completed", payload => tracker.runCompleted(payload)),
       hook("delivery_completed", "delivery.completed", payload => tracker.deliveryCompleted(payload)),
       hook("delivery_failed", "delivery.failed", payload => tracker.deliveryFailed(payload)),

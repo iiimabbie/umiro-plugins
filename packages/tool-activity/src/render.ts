@@ -1,12 +1,10 @@
 export type LineStatus = "running" | "ok" | "err";
-export type ActivityLine =
-  | { readonly kind: "tool"; readonly operationId: string; readonly tool: string; status: LineStatus }
-  | { readonly kind: "note"; readonly text: string };
+export interface ActivityLine { readonly kind: "tool"; readonly operationId: string; readonly tool: string; status: LineStatus }
 
 const ICON: Record<LineStatus, string> = { running: "→", ok: "✓", err: "✗" };
 
 export function renderLine(line: ActivityLine): string {
-  return line.kind === "tool" ? `${ICON[line.status]} ${line.tool}` : `> ${line.text}`;
+  return `${ICON[line.status]} ${line.tool}`;
 }
 
 /** Joins the lines newest-last and keeps the tail when the cap is exceeded. */
