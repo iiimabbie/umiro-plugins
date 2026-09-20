@@ -7,21 +7,11 @@ export interface Person { readonly heading: string; readonly discordId?: string;
 interface PeopleConfig { readonly workspacePath: string; readonly maxEntries?: number; readonly maxCharacters?: number; readonly inlineLimit?: number; readonly recentTurns?: number }
 const unique = (values: readonly string[]) => [...new Set(values.map(value => value.trim()).filter(Boolean))];
 
-function splitParenthesized(value: string): string[] {
-  const inside: string[] = [];
-  const outside = value.replace(/[（(]([^()（）]+)[）)]/g, (_match, alias: string) => { inside.push(alias.trim()); return " "; }).trim();
-  return outside ? [...inside, outside] : inside;
-}
-
 export function parseAliasValue(value: string): string[] {
   const trimmed = value.trim();
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (Array.isArray(parsed)) return unique(parsed.flatMap(item => typeof item === "string" ? splitParenthesized(item) : []));
-    } catch { /* accept legacy syntax */ }
-  }
-  return unique(trimmed.split(/\s+\/\s+|／/).flatMap(splitParenthesized));
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!Array.isArray(parsed) || parsed.some(item => typeof item !== "string")) throw new TypeError("別名 must be a JSON array of strings");
+  return unique(parsed);
 }
 
 export function parsePeople(content: string): Person[] {

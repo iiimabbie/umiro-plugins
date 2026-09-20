@@ -57,7 +57,7 @@ test("manifest contributions match the plugin instance", async () => {
   }
 });
 
-test("gmail helpers keep V1 formatting and reject header injection", () => {
+test("gmail helpers format summaries and reject header injection", () => {
   const headers = [{ name: "From", value: "Alice <alice@example.com>" }, { name: "To", value: "Bob <bob@example.com>" }, { name: "Delivered-To", value: "bob@example.com" }, { name: "X-Forwarded-To", value: "carol@example.com" }, { name: "Subject", value: "Hi" }, { name: "Date", value: "Mon" }];
   assert.deepEqual(collectRecipients(headers), ["Bob <bob@example.com>", "carol@example.com"]);
   assert.equal(formatSearchLine("m1", headers), "[m1] Mon | Alice <alice@example.com> -> Bob <bob@example.com>, carol@example.com | Hi");
@@ -74,7 +74,7 @@ test("drive helpers escape queries and build multipart bodies", async () => {
   assert.equal(await body.text(), `--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n{"name":"a.txt"}\r\n--${boundary}\r\ncontent-type: text/plain\r\n\r\nhello\r\n--${boundary}--`);
 });
 
-test("/google-auth walks the V1 flow and stores the refresh token in plugin state", async () => {
+test("/google-auth completes the authorization flow and stores the refresh token in plugin state", async () => {
   const { command, state, calls } = setup(call => call.url.hostname === "oauth2.googleapis.com" ? { access_token: "access-2", refresh_token: "refresh-2", expires_in: 3600 } : {}, { authorized: false });
   const auth = command("google-auth");
   assert.equal(auth.ownerOnly, true);
@@ -128,7 +128,7 @@ test("expired access tokens are refreshed once and persisted", async () => {
   assert.equal(calls.filter(call => call.url.hostname === "oauth2.googleapis.com").length, 1);
 });
 
-test("gmail search and read call the REST endpoints with V1 semantics", async () => {
+test("gmail search and read call the REST endpoints with the expected contract", async () => {
   const { tool } = setup(call => {
     if (call.url.pathname.endsWith("/messages")) { assert.equal(call.url.searchParams.get("q"), "from:alice"); assert.equal(call.url.searchParams.get("maxResults"), "10"); return { messages: [{ id: "m1" }] }; }
     if (call.url.searchParams.get("format") === "metadata") { assert.deepEqual(call.url.searchParams.getAll("metadataHeaders"), ["Subject", "From", "Date", "To", "Delivered-To", "X-Forwarded-To"]); return { payload: { headers: [{ name: "Subject", value: "S" }, { name: "From", value: "a@example.com" }, { name: "Date", value: "D" }, { name: "To", value: "b@example.com" }] } }; }
@@ -170,7 +170,7 @@ test("calendar tools default to the primary calendar and only patch provided fie
   assert.deepEqual(tool("google_calendar_delete_event").policy.resource?.({ calendar_id: "team@example.com" }), { kind: "google-calendar", id: "team@example.com" });
 });
 
-test("tasks tools use the @default list and V1 output", async () => {
+test("tasks tools use the @default list and stable output", async () => {
   const { tool, calls } = setup(call => call.method === "GET" ? { items: [{ id: "t1", title: "Buy milk", status: "needsAction", due: "2026-04-25T00:00:00.000Z" }, { id: "t2", title: "Done", status: "completed" }] } : call.method === "DELETE" ? new Response(null, { status: 204 }) : { id: "t3", title: "New" });
   const list = await tool("google_tasks_list").execute({ show_completed: true }, execution);
   assert.ok(list.ok && list.output === "[ ] [t1] Buy milk (due: 2026-04-25)\n[x] [t2] Done");

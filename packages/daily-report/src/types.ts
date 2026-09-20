@@ -47,7 +47,7 @@ export interface PluginConfigStore {
 
 export interface PluginMessageTransport {
   sendText(input: { channelId: string; content: string }): Promise<{ messageId: string }>;
-  editText(input: { channelId: string; messageId: string; content: string }): Promise<{ messageId: string; migrated: boolean }>;
+  editText(input: { channelId: string; messageId: string; content: string }): Promise<{ messageId: string }>;
 }
 
 export interface PluginRuntimeContext {

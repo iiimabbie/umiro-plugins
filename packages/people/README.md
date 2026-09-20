@@ -18,7 +18,7 @@ never overwritten if it already exists. Only three structures are parsed:
 |---|---|---|
 | `## <name>` | yes | Starts one person entry; everything until the next `##` is that entry |
 | `- Discord ID: <digits>` | no | Matches the person to message authors, mentions and reply targets |
-| `- 別名: ["A", "B"]` | no | Alternative names matched against message text. Legacy `A／B（C）` also parses |
+| `- 別名: ["A", "B"]` | no | Alternative names matched against message text |
 
 Any other `- key: value` line is free-form and passed through unchanged, so field names are
 a per-deployment choice rather than a schema. Text before the first `##` is ignored and does

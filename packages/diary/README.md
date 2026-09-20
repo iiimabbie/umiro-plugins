@@ -1,6 +1,6 @@
 # Diary
 
-Umiro V2 plugin that ports the V1 daily journal workflow. It is an automated agent diary, not a manual note database.
+Umiro plugin for an automated agent diary workflow. It is not a manual note database.
 
 Every day, a durable scheduled Run:
 

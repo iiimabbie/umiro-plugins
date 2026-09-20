@@ -45,9 +45,8 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     const previous = await context.state!.read(NOTIFIED_FINGERPRINT);
     if (previous && new TextDecoder().decode(previous) === result.fingerprint) return;
     const ownerId = context.getSecret("UMIRO_OWNER_DISCORD_ID");
-    const createButtonSet = discord.createButtonSet;
     const manageable = actionable.filter(item => item.currentSha256 || item.approvedSha256);
-    if (createButtonSet && ownerId && manageable.length) {
+    if (ownerId && manageable.length) {
       for (let offset = 0; offset < manageable.length; offset += 24) {
         const batch = manageable.slice(offset, offset + 24);
         const buttons: GuardianButton[] = batch.flatMap((item, index): GuardianButton[] => {
@@ -65,7 +64,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
         if (unapproved.length) lines.push(...(lines.length ? [""] : []), "The following monitored files do not have an approved baseline:", "", ...unapproved.map(item => `• \`${item.path}\``));
         if (missing.length) lines.push(...(lines.length ? [""] : []), "The following monitored files are missing:", "", ...missing.map(item => `• \`${item.path}\``));
         lines.push("", "Review the changes. Set a new baseline with the buttons, or ask ümiro to inspect the diff and restore the file if the change is unwanted.");
-        await createButtonSet({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — drift detected", lines), allowedUserIds: [ownerId], expiresInMinutes: 24 * 60, buttons, ...(signal ? { signal } : {}) });
+        await discord.createButtonSet({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — drift detected", lines), allowedUserIds: [ownerId], expiresInMinutes: 24 * 60, buttons, ...(signal ? { signal } : {}) });
       }
       const errors = actionable.filter(item => !item.currentSha256 && !item.approvedSha256);
       if (errors.length) await discord.sendMessage({ channelId: config.channelId, content: boundedMessage("🛡️ Soul Guardian — 需要手動處理", errors.map(item => `• \`${item.path}\` — ${item.status}`)), ...(signal ? { signal } : {}) });

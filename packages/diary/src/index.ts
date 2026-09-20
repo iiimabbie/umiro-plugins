@@ -93,7 +93,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     const input = { pluginId: context.pluginId, prompt: `${JOURNAL_PROMPT}\n\nConfigured journal timezone: ${timezone}.`, ...(config.model ? { model: config.model } : {}) };
     const trigger = existing ?? await scheduler.create({ name: "Daily journal", enabled: true, schedule: { kind: "cron", expression: schedule }, timezone, jobRef: "agent.prompt", input, creatorPrincipalId: "owner", creatorRoles: ["owner"], authority: context.permissionCeiling, misfirePolicy: "coalesce", maxAttempts: 3, retryBackoffMs: 15_000 }, SCHEDULE_KEY);
     scheduleId = trigger.id;
-    if (scheduler.update) await scheduler.update(trigger.id, { name: "Daily journal", schedule: { kind: "cron", expression: schedule }, timezone, input, misfirePolicy: "coalesce", maxAttempts: 3, retryBackoffMs: 15_000 });
+    await scheduler.update(trigger.id, { name: "Daily journal", schedule: { kind: "cron", expression: schedule }, timezone, input, misfirePolicy: "coalesce", maxAttempts: 3, retryBackoffMs: 15_000 });
     if (!trigger.enabled) await scheduler.setEnabled(trigger.id, true);
   };
   return { contributions: { tools }, async start() {

@@ -55,12 +55,12 @@ test("disabled journal leaves an existing durable schedule disabled", async () =
   const root = await mkdtemp(join(tmpdir(), "umiro-diary-disabled-")); let disabled = false;
   try {
     const existing: ScheduledTrigger = { id: "tool:umiro-plugin-diary.daily-journal", name: "Daily journal", enabled: true, schedule: { kind: "cron", expression: "55 23 * * *" }, timezone: "UTC", input: {}, misfirePolicy: "coalesce", maxAttempts: 3, retryBackoffMs: 15_000 };
-    const plugin = createPlugin({ pluginId: "diary", namespace: "diary", permissionCeiling: authority, config: { workspacePath: root, scheduleEnabled: false, timezone: "UTC" }, getSecret: () => undefined, services: { conversationHistory: { async transcriptByDate(input) { return { ...input, conversations: 0, messages: 0, text: "", truncated: false }; } }, scheduler: { async create() { throw new Error("must not create"); }, async list() { return [existing]; }, async setEnabled(_id, enabled) { disabled = !enabled; return { ...existing, enabled }; } } } });
+    const plugin = createPlugin({ pluginId: "diary", namespace: "diary", permissionCeiling: authority, config: { workspacePath: root, scheduleEnabled: false, timezone: "UTC" }, getSecret: () => undefined, services: { conversationHistory: { async transcriptByDate(input) { return { ...input, conversations: 0, messages: 0, text: "", truncated: false }; } }, scheduler: { async create() { throw new Error("must not create"); }, async list() { return [existing]; }, async setEnabled(_id, enabled) { disabled = !enabled; return { ...existing, enabled }; }, async update() { throw new Error("must not update"); } } } });
     await plugin.start?.(); assert.equal(disabled, true);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("journal prompt preserves the V1 personal-diary contract", () => {
+test("journal prompt preserves the personal-diary contract", () => {
   assert.match(JOURNAL_PROMPT, /your own diary/);
   assert.match(JOURNAL_PROMPT, /not read like a changelog/);
   assert.match(JOURNAL_PROMPT, /journal_transcript_by_date/);

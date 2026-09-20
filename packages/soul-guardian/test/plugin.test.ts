@@ -18,7 +18,7 @@ test("one Soul Guardian entry contributes tools, a job and a command", async () 
   const workspace = await mkdtemp(join(tmpdir(), "umiro-sg-"));
   await writeFile(join(workspace, "SOUL.md"), "persona");
   const notifications: string[] = [];
-  const plugin = createPlugin({ pluginId: "soul-guardian", namespace: "soul-guardian", permissionCeiling: { capabilities: [], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: workspace, schedule: "0 8 * * *", timezone: "Asia/Taipei", channelId: "123456789012345678", targets: [{ path: "SOUL.md" }] }, state: new MemoryState(), services: { discord: { async sendMessage(input) { notifications.push(`${input.channelId}:${input.content}`); return { messageId: String(notifications.length) }; } } }, getSecret: () => undefined });
+  const plugin = createPlugin({ pluginId: "soul-guardian", namespace: "soul-guardian", permissionCeiling: { capabilities: [], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: workspace, schedule: "0 8 * * *", timezone: "Asia/Taipei", channelId: "123456789012345678", targets: [{ path: "SOUL.md" }] }, state: new MemoryState(), services: { discord: { async createButtonSet() { throw new Error("must not create buttons without an owner ID"); }, async sendMessage(input) { notifications.push(`${input.channelId}:${input.content}`); return { messageId: String(notifications.length) }; } } }, getSecret: () => undefined });
   await plugin.start?.();
   assert.equal(plugin.contributions.tools?.length, 6);
   const policies = Object.fromEntries(plugin.contributions.tools!.map(tool => [tool.name, tool.policy]));

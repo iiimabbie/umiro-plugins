@@ -18,7 +18,7 @@ export interface SchedulerControl {
   create(input: { readonly name: string; readonly enabled: boolean; readonly schedule: { readonly kind: "cron"; readonly expression: string }; readonly timezone: string; readonly jobRef: string; readonly input: JsonObject; readonly creatorPrincipalId: string; readonly creatorRoles: readonly ("owner" | "member" | "guest" | "system")[]; readonly authority: unknown; readonly misfirePolicy: "catch_up" | "coalesce" | "skip"; readonly maxAttempts: number; readonly retryBackoffMs: number }, idempotencyKey?: string): Promise<ScheduledTrigger>;
   list(): Promise<readonly ScheduledTrigger[]>;
   setEnabled(id: string, enabled: boolean): Promise<ScheduledTrigger>;
-  update?(id: string, patch: { readonly name: string; readonly schedule: { readonly kind: "cron"; readonly expression: string }; readonly timezone: string; readonly input: JsonObject; readonly misfirePolicy: "catch_up" | "coalesce" | "skip"; readonly maxAttempts: number; readonly retryBackoffMs: number }): Promise<ScheduledTrigger>;
+  update(id: string, patch: { readonly name: string; readonly schedule: { readonly kind: "cron"; readonly expression: string }; readonly timezone: string; readonly input: JsonObject; readonly misfirePolicy: "catch_up" | "coalesce" | "skip"; readonly maxAttempts: number; readonly retryBackoffMs: number }): Promise<ScheduledTrigger>;
 }
 export interface PluginLogger { debug(event: string, message: string, data?: JsonObject): void; info(event: string, message: string, data?: JsonObject): void; warn(event: string, message: string, data?: JsonObject): void; error(event: string, message: string, data?: JsonObject): void }
 export interface PluginSetupContext {
