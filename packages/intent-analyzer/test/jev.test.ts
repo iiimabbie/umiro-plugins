@@ -20,8 +20,10 @@ test("Jev backend sends one native System One request with all tool prompts", as
   const result = await backend.analyze(input, new AbortController().signal);
   assert.equal(seen?.url, "https://api.typesafe.ai/v1/systemone");
   assert.equal((seen?.init?.headers as Record<string, string>).authorization, "Bearer fake-key");
-  const body = JSON.parse(String(seen?.init?.body)) as { state: unknown; model: string; questions: Record<string, { type: string; instructions: string }> };
+  const body = JSON.parse(String(seen?.init?.body)) as { state: unknown; model: string; questions: Record<string, { type: string; instructions: string; criteria: Record<string, string | null> }> };
   assert.deepEqual(body.state, { request: "find this" }); assert.equal(body.model, "jev-latest"); assert.equal(body.questions["tool::search"]?.type, "noul"); assert.match(body.questions["tool::search"]?.instructions ?? "", /Search documents/); assert.match(body.questions["tool::search"]?.instructions ?? "", /parameters/); assert.doesNotMatch(JSON.stringify(body), /fake-key/);
+  assert.match(body.questions["tool::search"]?.instructions ?? "", /prerequisite inspection/);
+  assert.match(body.questions["tool::search"]?.criteria.true ?? "", /perform, prepare for, or verify/);
   assert.deepEqual(result, { schemaVersion: 2, primaryIntent: "research", actionMode: "read_only", needsMemory: false, needsExternalInformation: false, userExplicitlyRequestedExecution: false, shouldReply: true, selectedToolNames: ["search"] });
 });
 

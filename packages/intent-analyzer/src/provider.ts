@@ -28,6 +28,10 @@ export function createIntentTurnAnalyzer(config: IntentAnalyzerConfig, backend: 
         const analysis = validateIntentAnalysis(await backend.analyze({ text: request.text, tools }, signal));
         const allowed = new Set(tools.map(tool => tool.name));
         const selectedToolNames = analysis.selectedToolNames.filter(name => allowed.has(name));
+        if (selectedToolNames.length === 0 && analysis.userExplicitlyRequestedExecution && (analysis.actionMode === "mutate" || analysis.actionMode === "execute")) {
+          log(logger, "warn", "intent.analysis.inconclusive", "Intent analysis selected no tools for an explicit action; continuing without advisory tool filtering", { eventId: request.event.id, backend: backend.id, actionMode: analysis.actionMode });
+          return undefined;
+        }
         const normalized: IntentAnalysis = { ...analysis, selectedToolNames };
         const block: ContextBlock = {
           id: `intent.analysis:${request.event.id}`,

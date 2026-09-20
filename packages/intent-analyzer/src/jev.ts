@@ -30,7 +30,14 @@ function makeQuestions(tools: readonly ToolCandidate[]): { readonly questions: R
   for (const tool of tools) {
     const id = questionIdForTool(tool.name);
     toolIds.set(id, tool.name);
-    questions[id] = { type: "noul", instructions: `Should the model be allowed to consider this tool for the current request?\n${JSON.stringify({ name: tool.name, description: tool.description, parameters: tool.parameters })}`, criteria: { true: "The tool is relevant to this request", false: "The tool is not relevant to this request" } };
+    questions[id] = {
+      type: "noul",
+      instructions: `Could the main model need this tool to fulfill the current request? Include prerequisite inspection or lookup tools needed before an explicit action. Missing target details do not make an otherwise applicable tool irrelevant; the main model can resolve them from conversation context or ask a follow-up.\n${JSON.stringify({ name: tool.name, description: tool.description, parameters: tool.parameters })}`,
+      criteria: {
+        true: "This tool could plausibly perform, prepare for, or verify the requested work",
+        false: "This tool has no plausible role in performing, preparing for, or verifying the requested work",
+      },
+    };
   }
   return { questions, toolIds };
 }

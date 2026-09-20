@@ -25,6 +25,15 @@ test("analyzer passes every candidate once and discards unknown selections", asy
   assert.deepEqual(result?.selectedToolNames, ["search"]); assert.deepEqual((seen as { tools: unknown[] }).tools, [{ name: "search", description: "Search", parameters: { type: "object" } }, { name: "write", description: "Write", parameters: { type: "object" } }]);
 });
 
+test("explicit actions with no selected tools fail open to the main model", async () => {
+  const records: unknown[] = [];
+  const contradictory = { ...valid, actionMode: "mutate", userExplicitlyRequestedExecution: true, selectedToolNames: [] };
+  const analyzer = createIntentTurnAnalyzer(config, backend(contradictory), logger(records));
+  const result = await analyzer.analyze(request("edit it", [{ name: "write_file", description: "Write a file", parameters: { type: "object" } }]));
+  assert.equal(result, undefined);
+  assert.equal((records[1] as { event: string }).event, "intent.analysis.inconclusive");
+});
+
 test("empty, oversized and over-cap candidate input skips backend", async () => {
   const calls: string[] = []; const analyzer = createIntentTurnAnalyzer({ ...config, maxInputCharacters: 3 }, backend(valid, calls));
   assert.equal(await analyzer.analyze(request("  ")), undefined); assert.equal(await analyzer.analyze(request("four")), undefined);

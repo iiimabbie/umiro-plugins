@@ -39,6 +39,7 @@ test("backend sends the bounded OpenAI-compatible request without auth by defaul
   assert.equal((seen?.init?.headers as Record<string, string>).authorization, undefined);
   assert.equal(body.response_format, undefined);
   assert.ok(CLASSIFIER_SYSTEM_PROMPT.includes("Return exactly one JSON object"));
+  assert.ok(CLASSIFIER_SYSTEM_PROMPT.includes("prerequisite inspection tools"));
 });
 
 test("backend supports json-object and trimmed Bearer auth", async () => {
