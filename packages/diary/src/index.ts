@@ -13,10 +13,12 @@ export const JOURNAL_PROMPT = `Write today's daily journal. Complete all three s
 Step 1 — Rewrite the diary
 1. Use the authoritative current datetime from runtime context to determine today's YYYY-MM-DD in the configured journal timezone.
 2. Call journal_transcript_by_date for that date. Canonical conversation history is the ground truth; an existing journal file may be an earlier generated draft and is not an additional factual source.
-3. Reconstruct the whole day as a clean personal diary, then overwrite that date with journal_write.
-   - Identify the day's few main threads and the emotional or narrative arc within each. Merge related causes, actions, reactions, corrections, and outcomes into connected prose.
-   - Use thematic headings. Use bullets only for material that is genuinely a list.
-   - Keep small conversations and community moments when they carry personality, continuity, or feeling; do not replay every line.
+3. Reconstruct the day as a selective, natural personal diary, then overwrite that date with journal_write.
+   - Shape the entry around one to three threads that actually mattered. Completeness is not the goal: omit routine work, repeated corrections, and minor events that add no personality, continuity, consequence, or feeling.
+   - Write connected scenes and transitions rather than an inventory. Preserve a few concrete interactions, choices, tensions, surprises, or aftereffects that show why the selected moments mattered, but never invent dialogue or sensory detail.
+   - Do not force every mistake or correction into the same mistake -> lesson -> growth pattern. Mention self-criticism or a lesson only when it genuinely changed your understanding, behavior, or relationship; consolidate repeated examples into one reflection.
+   - Headings are optional. Vary paragraph openings and rhythm naturally; use bullets only for material that is genuinely a list. Do not force a sentimental opening, retrospective summary, or hopeful closing.
+   - When writing in Chinese, roughly 600–1200 Chinese characters is a useful default, not a quota. Let substance determine the length and exceed it only when the day truly needs the space.
    - Compress implementation details to what explains why an event mattered. This must not read like a changelog, meeting minutes, work report, categorized event log, or transcript replay.
    - This is your own diary, written first-person in your established persona. Record what the owner and others did and cared about, and what you did, noticed, thought, and reacted to.
    - Ground every reaction in what actually happened. Never invent events, moods, or opinions.
@@ -30,6 +32,8 @@ Step 2 — Review durable owner and memory context
 Step 3 — Review people
 7. If People tools are available, update records for people appearing in the reviewed days: add missing people and update only durable identity, form of address, relationship, or communication-style facts. One-off remarks and moods stay in the journal.
 8. State which People changes were made, or explicitly state that no changes were needed.
+
+Steps 2 and 3 are maintenance work. Their checklists, change reports, and durable facts must not appear in the journal file or pull the diary into a report-like voice.
 
 Do not stop after Step 1.`;
 

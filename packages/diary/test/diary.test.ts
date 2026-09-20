@@ -63,6 +63,11 @@ test("disabled journal leaves an existing durable schedule disabled", async () =
 test("journal prompt preserves the personal-diary contract", () => {
   assert.match(JOURNAL_PROMPT, /your own diary/);
   assert.match(JOURNAL_PROMPT, /not read like a changelog/);
+  assert.match(JOURNAL_PROMPT, /one to three threads that actually mattered/);
+  assert.match(JOURNAL_PROMPT, /Completeness is not the goal/);
+  assert.match(JOURNAL_PROMPT, /Do not force every mistake or correction/);
+  assert.match(JOURNAL_PROMPT, /Do not force a sentimental opening/);
+  assert.match(JOURNAL_PROMPT, /must not appear in the journal file/);
   assert.match(JOURNAL_PROMPT, /journal_transcript_by_date/);
   assert.match(JOURNAL_PROMPT, /previous three journal days/);
   assert.match(JOURNAL_PROMPT, /Do not stop after Step 1/);
