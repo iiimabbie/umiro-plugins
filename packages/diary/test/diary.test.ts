@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createPlugin, JOURNAL_PROMPT } from "../src/index.js";
+import { createPlugin, JOURNAL_DIRECTORY, JOURNAL_PROMPT, journalRelativePath } from "../src/index.js";
 import type { ScheduledTrigger, SearchDocument } from "../src/umiro-api.js";
 
 const authority = { capabilities: ["journal.read", "journal.write", "memory.search", "memory.write", "memory.remove", "owner.profile.write", "people.write", "people.remove", "tool.catalog"], visibility: { kind: "all" }, instructionAuthority: "full" };
@@ -41,14 +41,73 @@ test("journal tools project canonical transcript and atomically replace one dail
     assert.equal(transcript.ok && (transcript.output as { messages: number }).messages, 2);
     const written = await tools.get("journal_write")!.execute({ date: "2026-09-18", content: "# 今天\n\n我和主人去散步。" }, toolContext);
     assert.equal(written.ok, true); assert.equal(written.effectStatus, "confirmed");
-    assert.equal(await readFile(join(root, "memory", "2026-09-18.md"), "utf8"), "# 今天\n\n我和主人去散步。\n");
-    assert.equal(projections.get("memory/2026-09-18.md")?.[0]?.sourceId, "memory/2026-09-18.md");
-    assert.deepEqual(projections.get("memory/2026-09-18.md")?.[0]?.visibility, { kind: "restricted", principalIds: ["owner"], labels: [], resources: [] });
+    assert.equal(await readFile(join(root, JOURNAL_DIRECTORY, "2026-09-18.md"), "utf8"), "# 今天\n\n我和主人去散步。\n");
+    assert.equal(projections.get(journalRelativePath("2026-09-18"))?.[0]?.sourceId, journalRelativePath("2026-09-18"));
+    assert.deepEqual(projections.get(journalRelativePath("2026-09-18"))?.[0]?.visibility, { kind: "restricted", principalIds: ["owner"], labels: [], resources: [] });
     const read = await tools.get("journal_read")!.execute({ date: "2026-09-18" }, toolContext);
     assert.equal(read.ok && (read.output as { content: string }).content, "# 今天\n\n我和主人去散步。\n");
     await plugin.stop?.();
     assert.deepEqual(toggled, [["tool:umiro-plugin-diary.daily-journal", false]]);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("clean cutover ignores legacy daily files and only writes the canonical diary path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "umiro-diary-clean-cutover-"));
+  const legacy = join(root, "memory", "2026-09-18.md");
+  const projections = new Map<string, readonly SearchDocument[]>();
+  try {
+    await mkdir(join(root, "memory"), { recursive: true });
+    await writeFile(legacy, "legacy journal\n");
+    const plugin = createPlugin({
+      pluginId: "diary", namespace: "diary", permissionCeiling: authority, config: { workspacePath: root, timezone: "UTC", scheduleEnabled: false }, getSecret: () => undefined,
+      services: {
+        conversationHistory: { async transcriptByDate(input) { return { ...input, conversations: 0, messages: 0, text: "", truncated: false }; } },
+        searchDocuments: { async replaceSource(sourceId, documents) { projections.set(sourceId, documents); }, async removeSource() {} },
+        scheduler: { async list() { return []; }, async create() { throw new Error("must not create"); }, async setEnabled() { throw new Error("must not toggle"); }, async update() { throw new Error("must not update"); } },
+      },
+    });
+    await plugin.start?.();
+    const tools = new Map(plugin.contributions.tools?.map(tool => [tool.name, tool]));
+    const read = await tools.get("journal_read")!.execute({ date: "2026-09-18" }, toolContext);
+    assert.deepEqual(read.ok && read.output, { date: "2026-09-18", content: null });
+    assert.equal(projections.size, 0);
+    const written = await tools.get("journal_write")!.execute({ date: "2026-09-18", content: "new journal" }, toolContext);
+    assert.equal(written.ok, true);
+    assert.equal(await readFile(legacy, "utf8"), "legacy journal\n");
+    assert.equal(await readFile(join(root, "diary", "2026-09-18.md"), "utf8"), "new journal\n");
+    assert.equal(projections.has(journalRelativePath("2026-09-18")), true);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("diary directory symlinks are rejected", async () => {
+  const root = await mkdtemp(join(tmpdir(), "umiro-diary-symlink-"));
+  const target = await mkdtemp(join(tmpdir(), "umiro-diary-target-"));
+  try {
+    await symlink(target, join(root, JOURNAL_DIRECTORY));
+    const plugin = createPlugin({ pluginId: "diary", namespace: "diary", permissionCeiling: authority, config: { workspacePath: root, scheduleEnabled: false, timezone: "UTC" }, getSecret: () => undefined, services: { scheduler: { async list() { return []; }, async create() { throw new Error("must not create"); }, async setEnabled() { throw new Error("must not toggle"); }, async update() { throw new Error("must not update"); } } } });
+    await assert.rejects(() => plugin.start!(), /non-symlink directory/);
+    assert.equal((await lstat(target)).isDirectory(), true);
+  } finally { await rm(root, { recursive: true, force: true }); await rm(target, { recursive: true, force: true }); }
+});
+
+test("startup republishes existing canonical diary files only", async () => {
+  const root = await mkdtemp(join(tmpdir(), "umiro-diary-publish-"));
+  const projections = new Map<string, readonly SearchDocument[]>();
+  try {
+    await mkdir(join(root, JOURNAL_DIRECTORY), { recursive: true });
+    await writeFile(join(root, JOURNAL_DIRECTORY, "2026-09-18.md"), "canonical journal\n");
+    await writeFile(join(root, JOURNAL_DIRECTORY, "2026-99-99.md"), "invalid date\n");
+    const plugin = createPlugin({ pluginId: "diary", namespace: "diary", permissionCeiling: authority, config: { workspacePath: root, scheduleEnabled: false, timezone: "UTC" }, getSecret: () => undefined, services: { searchDocuments: { async replaceSource(sourceId, documents) { projections.set(sourceId, documents); }, async removeSource() {} }, scheduler: { async list() { return []; }, async create() { throw new Error("must not create"); }, async setEnabled() { throw new Error("must not toggle"); }, async update() { throw new Error("must not update"); } } } });
+    await plugin.start!();
+    assert.equal(projections.get(journalRelativePath("2026-09-18"))?.[0]?.text, "canonical journal\n");
+    assert.equal(projections.has("diary/2026-99-99.md"), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("diary source publishes only the clean canonical contract", async () => {
+  const source = await readFile(new URL("../../src/index.ts", import.meta.url), "utf8");
+  assert.match(source, /JOURNAL_DIRECTORY = "diary"/);
+  assert.doesNotMatch(source, /memoryRoot|removeSource|memory\/\$\{date\}/);
 });
 
 test("disabled journal leaves an existing durable schedule disabled", async () => {
