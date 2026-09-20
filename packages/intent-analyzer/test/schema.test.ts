@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { IntentAnalyzerFailure } from "../src/contract.js";
 import { validateIntentAnalysis } from "../src/schema.js";
 
-const valid = { schemaVersion: 1, primaryIntent: "chat", actionMode: "read_only", needsMemory: false, needsExternalInformation: false, userExplicitlyRequestedExecution: false, confidence: 0.8 } as const;
+const valid = { schemaVersion: 2, primaryIntent: "chat", actionMode: "read_only", needsMemory: false, needsExternalInformation: false, userExplicitlyRequestedExecution: false, shouldReply: true, selectedToolNames: [], confidence: 0.8 } as const;
 
 test("strict schema accepts and rebuilds a valid result", () => {
   const source = { ...valid, ignored: undefined };
@@ -24,7 +24,7 @@ test("schema accepts every enum and missing confidence", () => {
 test("schema rejects missing fields, wrong types, bounds and extra prose", () => {
   for (const value of [
     null, [], "text",
-    { ...valid, schemaVersion: 2 }, { ...valid, needsMemory: "false" },
+    { ...valid, schemaVersion: 1 }, { ...valid, needsMemory: "false" }, { ...valid, selectedToolNames: ["search", "search"] }, { ...valid, selectedToolNames: ["bad name"] },
     { ...valid, confidence: Number.NaN }, { ...valid, confidence: Infinity },
     { ...valid, confidence: -0.1 }, { ...valid, confidence: 1.1 },
     { ...valid, rationale: "do this", recommendedTool: "shell" },

@@ -1,4 +1,4 @@
-import { CLASSIFIER_SYSTEM_PROMPT } from "./prompt.js";
+import { buildClassifierUserPrompt, CLASSIFIER_SYSTEM_PROMPT } from "./prompt.js";
 import type { IntentAnalyzerBackend, IntentAnalyzerInput } from "./contract.js";
 import { IntentAnalyzerFailure } from "./contract.js";
 import type { IntentAnalyzerConfig } from "./config.js";
@@ -11,7 +11,7 @@ export class OpenAICompatibleChatBackend implements IntentAnalyzerBackend {
   private readonly endpoint: string;
   private readonly fetchImpl: FetchImplementation;
 
-  constructor(private readonly config: IntentAnalyzerConfig, private readonly apiKey?: string, fetchImpl: FetchImplementation = fetch) {
+  constructor(private readonly config: Extract<IntentAnalyzerConfig, { protocol: "openai-chat-completions" }>, private readonly apiKey?: string, fetchImpl: FetchImplementation = fetch) {
     this.endpoint = new URL("chat/completions", config.baseUrl).toString();
     this.fetchImpl = fetchImpl;
   }
@@ -24,11 +24,13 @@ export class OpenAICompatibleChatBackend implements IntentAnalyzerBackend {
       model: this.config.model,
       temperature: 0,
       stream: false,
-      messages: [{ role: "system", content: CLASSIFIER_SYSTEM_PROMPT }, { role: "user", content: input.text }],
+      messages: [{ role: "system", content: CLASSIFIER_SYSTEM_PROMPT }, { role: "user", content: buildClassifierUserPrompt(input.text, input.tools ?? []) }],
     };
     if (this.config.responseFormat === "json-object") body.response_format = { type: "json_object" };
+    const serializedBody = JSON.stringify(body);
+    if (new TextEncoder().encode(serializedBody).byteLength > 256 * 1024) throw new IntentAnalyzerFailure("input_too_large", "analyzer request exceeds the configured byte limit");
     let response: Response;
-    try { response = await this.fetchImpl(this.endpoint, { method: "POST", headers, body: JSON.stringify(body), signal }); }
+    try { response = await this.fetchImpl(this.endpoint, { method: "POST", headers, body: serializedBody, signal }); }
     catch (error) {
       if (signal.aborted) throw error;
       throw new IntentAnalyzerFailure("network_error", "analyzer request failed", { cause: error });

@@ -1,22 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseConfig, resolveConfig } from "../src/config.js";
+import { parseConfig, resolveConfig, type OpenAIIntentAnalyzerConfig } from "../src/config.js";
 import { IntentAnalyzerFailure } from "../src/contract.js";
 import { CLASSIFIER_SYSTEM_PROMPT } from "../src/prompt.js";
 import { OpenAICompatibleChatBackend } from "../src/openai-compatible.js";
 import { readBoundedBody } from "../src/bounded-body.js";
 
-const config = (extra: Record<string, unknown> = {}) => parseConfig({ protocol: "openai-chat-completions", baseUrl: "https://example.test/v1", model: "tiny", ...extra });
-const analysis = { schemaVersion: 1, primaryIntent: "chat", actionMode: "read_only", needsMemory: false, needsExternalInformation: false, userExplicitlyRequestedExecution: false };
+const config = (extra: Record<string, unknown> = {}) => parseConfig({ protocol: "openai-chat-completions", baseUrl: "https://example.test/v1", model: "tiny", ...extra }) as OpenAIIntentAnalyzerConfig;
+const analysis = { schemaVersion: 2, primaryIntent: "chat", actionMode: "read_only", needsMemory: false, needsExternalInformation: false, userExplicitlyRequestedExecution: false, shouldReply: true, selectedToolNames: [] };
 const response = (content: string, init?: ResponseInit) => new Response(JSON.stringify({ choices: [{ message: { content } }] }), { headers: { "content-type": "application/json" }, ...init });
 
 test("config applies defaults and normalizes URL", () => {
   assert.deepEqual(config(), { protocol: "openai-chat-completions", baseUrl: "https://example.test/v1/", model: "tiny", timeoutMs: 1500, maxInputCharacters: 12000, maxResponseBytes: 32768, responseFormat: "prompt-only" });
-  assert.equal(parseConfig({ protocol: "openai-chat-completions", baseUrl: "http://localhost:1", model: "m", responseFormat: "json-object" }).responseFormat, "json-object");
+  assert.equal((parseConfig({ protocol: "openai-chat-completions", baseUrl: "http://localhost:1", model: "m", responseFormat: "json-object" }) as OpenAIIntentAnalyzerConfig).responseFormat, "json-object");
   for (const value of ["ftp://example.test", "example.test", "", "  "]) assert.throws(() => config({ baseUrl: value }));
   assert.throws(() => config({ timeoutMs: 99 }));
   assert.throws(() => config({ maxResponseBytes: 255 }));
   assert.throws(() => config({ extra: true }));
+  assert.deepEqual(parseConfig({ protocol: "jev", baseUrl: "https://example.test", model: "jev-latest" }), { protocol: "jev", baseUrl: "https://example.test/", model: "jev-latest", timeoutMs: 1500, maxInputCharacters: 12000, maxResponseBytes: 32768 });
+  assert.throws(() => resolveConfig({ protocol: "unknown" }));
+  assert.throws(() => resolveConfig({ protocol: 123 }));
 });
 
 test("empty and partial configuration resolve to an inert installation", () => {

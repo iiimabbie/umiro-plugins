@@ -1,17 +1,29 @@
 export type ResponseFormat = "prompt-only" | "json-object";
-export interface IntentAnalyzerConfig {
-  readonly protocol: "openai-chat-completions";
+
+export interface CommonIntentAnalyzerConfig {
   readonly baseUrl: string;
   readonly model: string;
   readonly timeoutMs: number;
   readonly maxInputCharacters: number;
   readonly maxResponseBytes: number;
+}
+
+export interface OpenAIIntentAnalyzerConfig extends CommonIntentAnalyzerConfig {
+  readonly protocol: "openai-chat-completions";
   readonly responseFormat: ResponseFormat;
 }
 
+export interface JevIntentAnalyzerConfig extends CommonIntentAnalyzerConfig {
+  readonly protocol: "jev";
+}
+
+export type IntentAnalyzerConfig = OpenAIIntentAnalyzerConfig | JevIntentAnalyzerConfig;
+export type IntentAnalyzerProtocol = IntentAnalyzerConfig["protocol"];
+export type MissingField = "protocol" | "baseUrl" | "model";
+
 export interface IntentAnalyzerConfigResolution {
   readonly config?: IntentAnalyzerConfig;
-  readonly missingFields: readonly ("protocol" | "baseUrl" | "model")[];
+  readonly missingFields: readonly MissingField[];
 }
 
 export const DEFAULTS = { timeoutMs: 1_500, maxInputCharacters: 12_000, maxResponseBytes: 32_768, responseFormat: "prompt-only" as ResponseFormat } as const;
@@ -29,32 +41,42 @@ function integer(value: unknown, name: string, minimum: number, maximum: number)
   if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > maximum) throw new TypeError(`intent-analyzer config ${name} must be an integer from ${minimum} to ${maximum}`);
   return value as number;
 }
-
-export function parseConfig(value: unknown): IntentAnalyzerConfig {
-  const raw = record(value);
-  for (const key of Object.keys(raw)) if (!KEYS.has(key)) throw new TypeError(`intent-analyzer config contains unknown field: ${key}`);
-  if (raw.protocol !== "openai-chat-completions") throw new TypeError("intent-analyzer config protocol must be openai-chat-completions");
-  const baseUrl = string(raw.baseUrl, "baseUrl");
+function endpoint(value: unknown): string {
+  const baseUrl = string(value, "baseUrl");
   let parsed: URL;
   try {
     parsed = new URL(baseUrl);
     if (!parsed.pathname.endsWith("/")) parsed.pathname += "/";
   } catch { throw new TypeError("intent-analyzer config baseUrl must be a valid URL"); }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new TypeError("intent-analyzer config baseUrl must use http or https");
-  const model = string(raw.model, "model");
-  const timeoutMs = raw.timeoutMs === undefined ? DEFAULTS.timeoutMs : integer(raw.timeoutMs, "timeoutMs", 100, 10_000);
-  const maxInputCharacters = raw.maxInputCharacters === undefined ? DEFAULTS.maxInputCharacters : integer(raw.maxInputCharacters, "maxInputCharacters", 1, 100_000);
-  const maxResponseBytes = raw.maxResponseBytes === undefined ? DEFAULTS.maxResponseBytes : integer(raw.maxResponseBytes, "maxResponseBytes", 256, 1_048_576);
-  const responseFormat = raw.responseFormat === undefined ? DEFAULTS.responseFormat : raw.responseFormat;
-  if (responseFormat !== "prompt-only" && responseFormat !== "json-object") throw new TypeError("intent-analyzer config responseFormat is invalid");
-  return { protocol: "openai-chat-completions", baseUrl: parsed.toString(), model, timeoutMs, maxInputCharacters, maxResponseBytes, responseFormat };
+  return parsed.toString();
+}
+function limits(raw: Record<string, unknown>): Pick<CommonIntentAnalyzerConfig, "timeoutMs" | "maxInputCharacters" | "maxResponseBytes"> {
+  return {
+    timeoutMs: raw.timeoutMs === undefined ? DEFAULTS.timeoutMs : integer(raw.timeoutMs, "timeoutMs", 100, 10_000),
+    maxInputCharacters: raw.maxInputCharacters === undefined ? DEFAULTS.maxInputCharacters : integer(raw.maxInputCharacters, "maxInputCharacters", 1, 100_000),
+    maxResponseBytes: raw.maxResponseBytes === undefined ? DEFAULTS.maxResponseBytes : integer(raw.maxResponseBytes, "maxResponseBytes", 256, 1_048_576),
+  };
 }
 
-/** Empty or partially completed setup is an inert, valid installation state.
- * Plugin installation restarts Umiro before the user can configure the plugin. */
+export function parseConfig(value: unknown): IntentAnalyzerConfig {
+  const raw = record(value);
+  for (const key of Object.keys(raw)) if (!KEYS.has(key)) throw new TypeError(`intent-analyzer config contains unknown field: ${key}`);
+  const protocol = raw.protocol;
+  if (protocol !== "openai-chat-completions" && protocol !== "jev") throw new TypeError("intent-analyzer config protocol must be openai-chat-completions or jev");
+  const common = { baseUrl: endpoint(raw.baseUrl), model: string(raw.model, "model"), ...limits(raw) };
+  if (protocol === "jev") return { protocol, ...common };
+  const responseFormat = raw.responseFormat === undefined ? DEFAULTS.responseFormat : raw.responseFormat;
+  if (responseFormat !== "prompt-only" && responseFormat !== "json-object") throw new TypeError("intent-analyzer config responseFormat is invalid");
+  return { protocol, ...common, responseFormat };
+}
+
+/** Empty or partially completed setup is an inert, valid installation state. */
 export function resolveConfig(value: unknown): IntentAnalyzerConfigResolution {
   const raw = record(value);
   for (const key of Object.keys(raw)) if (!KEYS.has(key)) throw new TypeError(`intent-analyzer config contains unknown field: ${key}`);
+  if (raw.protocol !== undefined && typeof raw.protocol !== "string") throw new TypeError("intent-analyzer config protocol must be a string");
+  if (typeof raw.protocol === "string" && raw.protocol.trim() && raw.protocol !== "openai-chat-completions" && raw.protocol !== "jev") throw new TypeError("intent-analyzer config protocol must be openai-chat-completions or jev");
   const missingFields = (["protocol", "baseUrl", "model"] as const).filter(key => raw[key] === undefined || (typeof raw[key] === "string" && !raw[key].trim()));
   return missingFields.length ? { missingFields } : { config: parseConfig(raw), missingFields: [] };
 }

@@ -10,19 +10,19 @@
     "instructionAuthority": "none"
   },
   "namespace": "intent-analyzer",
-  "optionalSecrets": ["UMIRO_INTENT_API_KEY"],
+  "optionalSecrets": ["UMIRO_INTENT_API_KEY", "TYPESAFE_API_KEY"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "protocol": { "type": "string", "enum": ["openai-chat-completions"] },
+      "protocol": { "type": "string", "enum": ["openai-chat-completions", "jev"] },
       "baseUrl": { "type": "string", "minLength": 1 },
       "model": { "type": "string", "minLength": 1 },
       "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 10000 },
       "maxInputCharacters": { "type": "integer", "minimum": 1, "maximum": 100000 },
       "maxResponseBytes": { "type": "integer", "minimum": 256, "maximum": 1048576 },
-      "responseFormat": { "type": "string", "enum": ["prompt-only", "json-object"] }
+      "responseFormat": { "type": "string", "enum": ["prompt-only", "json-object"], "description": "OpenAI-compatible backend only" }
     }
   },
-  "contributes": { "contextProviders": ["intent.analysis"] }
+  "contributes": { "turnAnalyzers": ["intent.analysis"] }
 }

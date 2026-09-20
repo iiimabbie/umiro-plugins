@@ -1,6 +1,6 @@
 # intent-analyzer
 
-Optional Umiro context provider that classifies only the current request prompt and adds a small, strict-schema advisory intent block. It never grants authorization, chooses tools or models, stores durable data, or sends history, memory, secrets, or other context to the analyzer.
+Optional Umiro turn analyzer that classifies the current request once and adds strict-schema advisory intent, reply, and tool-selection metadata. It never grants authorization, executes tools, or sends history, memory, secrets, tool results, or runtime authorization to the analyzer.
 
 ## Install and configure
 
@@ -10,9 +10,9 @@ From a Umiro installation, install this workspace from the public plugin reposit
 umo plugin install https://github.com/iiimabbie/umiro-plugins --workspace intent-analyzer
 ```
 
-Installation restarts Umiro before configuration. Empty or incomplete configuration is therefore a valid, inert state: the plugin loads successfully, Umiro remains ready, and the provider returns no context until setup is complete. After the restart, configure `protocol`, `baseUrl`, and `model` through WebUI or `umo plugin configure`.
+Installation restarts Umiro before configuration. Empty or incomplete configuration is therefore a valid, inert state: the plugin loads successfully, Umiro remains ready, and the analyzer returns no result until setup is complete. After the restart, configure `protocol`, `baseUrl`, and `model` through WebUI or `umo plugin configure`; choose exactly one backend.
 
-The only supported protocol is `openai-chat-completions`. Optional settings are `timeoutMs` (default `1500`), `maxInputCharacters` (default `12000`), `maxResponseBytes` (default `32768`), and `responseFormat` (`prompt-only` by default, or `json-object` for endpoints that support JSON mode).
+Supported protocols are `openai-chat-completions` and `jev`. Shared settings are `timeoutMs` (default `1500`), `maxInputCharacters` (default `12000`), and `maxResponseBytes` (default `32768`). `responseFormat` (`prompt-only` by default, or `json-object`) applies only to OpenAI-compatible endpoints.
 
 For a local endpoint that does not require authentication, omit `UMIRO_INTENT_API_KEY`:
 
@@ -28,6 +28,17 @@ For a local endpoint that does not require authentication, omit `UMIRO_INTENT_AP
 
 For a hosted endpoint, configure its OpenAI-compatible base URL and model, then set the Umiro secret `UMIRO_INTENT_API_KEY`. The plugin sends the trimmed value as an `Authorization: Bearer` header and never logs it.
 
-Jev works when the selected Jev endpoint implements this same OpenAI-compatible Chat Completions protocol. Jev endpoints using a different private wire protocol are not supported by this version; no Jev-specific API is assumed.
+For Jev, use the TypeSafe API root and `jev-latest`, then set the optional Umiro secret `TYPESAFE_API_KEY`:
 
-Analyzer errors, invalid responses, oversized responses, and timeouts fail open: Umiro continues the ordinary run without an intent block. An already-cancelled upstream request remains cancelled. The resulting block is untrusted advisory metadata and does not control permissions, tools, models, or execution.
+```json
+{
+  "protocol": "jev",
+  "baseUrl": "https://api.typesafe.ai",
+  "model": "jev-latest",
+  "timeoutMs": 1500
+}
+```
+
+Jev uses `POST /v1/systemone` with one request containing intent, reply, and per-tool questions. The request includes only this turn's text and registered tools' model-facing name, description, and parameter schemas; it never includes history, memory, credentials, tool results, or runtime authorization. See the TypeSafe [API reference](https://docs.typesafe.ai/api.md).
+
+Analyzer errors, invalid responses, oversized responses, and timeouts fail open: Umiro falls back to its deterministic reply decision and exposes all registered tools. An already-cancelled upstream request remains cancelled. The result may gate Run creation and narrow model-visible tools, but remains untrusted advisory data: it never grants permission, authorizes a resource, or executes a tool.

@@ -2,16 +2,27 @@ export type PrimaryIntent = "chat" | "code_analysis" | "code_change" | "research
 export type ActionMode = "read_only" | "mutate" | "execute" | "unknown";
 
 export interface IntentAnalysis {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly primaryIntent: PrimaryIntent;
   readonly actionMode: ActionMode;
   readonly needsMemory: boolean;
   readonly needsExternalInformation: boolean;
   readonly userExplicitlyRequestedExecution: boolean;
+  readonly shouldReply: boolean;
+  readonly selectedToolNames: readonly string[];
   readonly confidence?: number;
 }
 
-export interface IntentAnalyzerInput { readonly text: string }
+export interface ToolCandidate {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: Record<string, unknown>;
+}
+
+export interface IntentAnalyzerInput {
+  readonly text: string;
+  readonly tools?: readonly ToolCandidate[];
+}
 export interface IntentAnalyzerBackend {
   readonly id: string;
   analyze(input: IntentAnalyzerInput, signal: AbortSignal): Promise<unknown>;

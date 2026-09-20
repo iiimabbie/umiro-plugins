@@ -11,7 +11,7 @@ Optional plugins for [Umiro](https://github.com/iiimabbie/umiro-agent).
 - `packages/people` — Adds optional `PEOPLE.md`-based person recognition and maintenance tools for Umiro V2.
 - `packages/tool-activity` — Shows the tools a Run is using in a temporary Discord message that is removed after the final reply.
 - `packages/soul-guardian` — Monitors explicitly configured workspace files and provides integrity tools for Umiro V2.
-- `packages/intent-analyzer` — Optionally classifies the current prompt with an OpenAI-compatible small model and adds advisory intent context. It does not authorize actions or choose tools/models.
+- `packages/intent-analyzer` — Optionally analyzes the current prompt once with an OpenAI-compatible or Jev backend, selecting reply intent and visible tools as untrusted advisory metadata. It does not authorize actions.
 
 ## Development
 
@@ -25,7 +25,7 @@ Runtime configuration and personal data belong in the Umiro workspace and must n
 
 ### intent-analyzer
 
-This plugin sends only the current turn's prompt to an OpenAI-compatible Chat Completions endpoint. Its strict, allowlisted result is advisory metadata (`role=intent`); it never grants permission, selects a tool or model, or stores durable data. Endpoint failures and timeouts are fail-open, so the ordinary Umiro run continues without the intent block.
+This plugin sends only the current turn's prompt and model-facing tool definitions to the selected backend. Its strict, allowlisted result is advisory metadata (`role=intent`); it never grants permission or executes tools. Endpoint failures and timeouts are fail-open, so the ordinary Umiro run continues with deterministic fallback.
 
 Install first without configuration; the restart remains healthy and the provider stays inactive until it is configured:
 
@@ -45,4 +45,4 @@ Example local, no-auth configuration to apply after that restart:
 }
 ```
 
-For a hosted endpoint, use its OpenAI-compatible base URL and model and configure the Umiro secret `UMIRO_INTENT_API_KEY`; the plugin sends it as a Bearer token. Jev can be used when its endpoint supports this same OpenAI-compatible Chat Completions protocol. A different Jev wire protocol is not supported by this version.
+For a hosted OpenAI-compatible endpoint, use its base URL and model and configure `UMIRO_INTENT_API_KEY`. For Jev, use `https://api.typesafe.ai` with `jev-latest` and configure `TYPESAFE_API_KEY`; the Jev backend calls `/v1/systemone` using the documented TypeSafe `state`/`questions` contract.

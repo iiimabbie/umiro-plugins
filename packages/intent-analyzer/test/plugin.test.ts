@@ -15,14 +15,17 @@ const setup = (config: Record<string, never> = {}): PluginSetupContext => ({
 });
 
 test("manifest permits install without configuration", async () => {
-  const manifest = JSON.parse(await readFile(new URL("../../umiro.plugin.json", import.meta.url), "utf8")) as { configSchema?: { required?: unknown } };
+  const manifest = JSON.parse(await readFile(new URL("../../umiro.plugin.json", import.meta.url), "utf8")) as { configSchema?: { required?: unknown; properties?: { protocol?: { enum?: unknown[] } } }; contributes?: { turnAnalyzers?: string[]; contextProviders?: string[] }; optionalSecrets?: string[] };
   assert.equal(manifest.configSchema?.required, undefined);
+  assert.deepEqual(manifest.configSchema?.properties?.protocol?.enum, ["openai-chat-completions", "jev"]);
+  assert.deepEqual(manifest.contributes, { turnAnalyzers: ["intent.analysis"] });
+  assert.deepEqual(manifest.optionalSecrets, ["UMIRO_INTENT_API_KEY", "TYPESAFE_API_KEY"]);
 });
 
 test("an unconfigured installation stays enabled and contributes an inert provider", async () => {
   const plugin = createPlugin(setup());
   assert.deepEqual(await plugin.health?.(), { status: "ok", detail: "installed but inactive until configured" });
-  const provider = plugin.contributions.contextProviders?.[0];
-  assert.equal(provider?.id, "intent.analysis");
-  assert.deepEqual(await provider?.load({ runId: "run", prompt: "hello", execution: { origin: { kind: "test" }, actor: { id: "user", kind: "human", roles: [] }, authority: {} } }), []);
+  const analyzer = plugin.contributions.turnAnalyzers?.[0];
+  assert.equal(analyzer?.id, "intent.analysis");
+  assert.equal(await analyzer?.analyze({ event: { id: "event", occurredAt: new Date().toISOString(), identity: { transport: "test", externalId: "user", principalId: null }, conversation: { transport: "test", externalId: "conversation", kind: "direct" }, content: [] }, text: "hello", defaultShouldReply: true, tools: [] }), undefined);
 });

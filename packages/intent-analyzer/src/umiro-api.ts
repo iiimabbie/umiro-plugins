@@ -27,6 +27,40 @@ export interface ContextProvider {
   load(request: ContextRequest): Promise<readonly ContextBlock[]>;
 }
 
+export interface InputEvent {
+  readonly id: string;
+  readonly occurredAt: string;
+  readonly identity: { readonly transport: string; readonly externalId: string; readonly principalId: string | null; readonly displayName?: string };
+  readonly conversation: { readonly transport: string; readonly externalId: string; readonly kind: "direct" | "channel" | "thread" };
+  readonly content: readonly JsonValue[];
+  readonly metadata?: JsonObject;
+}
+
+export interface TurnToolCandidate {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: Record<string, unknown>;
+}
+
+export interface TurnAnalyzerInput {
+  readonly event: InputEvent;
+  readonly text: string;
+  readonly defaultShouldReply: boolean;
+  readonly tools: readonly TurnToolCandidate[];
+  readonly signal?: AbortSignal;
+}
+
+export interface TurnAnalysis {
+  readonly shouldReply: boolean;
+  readonly selectedToolNames: readonly string[];
+  readonly contextBlocks: readonly ContextBlock[];
+}
+
+export interface TurnAnalyzer {
+  readonly id: string;
+  analyze(input: TurnAnalyzerInput): Promise<TurnAnalysis | undefined>;
+}
+
 export interface PluginLogger {
   debug(event: string, message: string, data?: JsonObject): void;
   info(event: string, message: string, data?: JsonObject): void;
@@ -44,7 +78,7 @@ export interface PluginSetupContext {
 }
 
 export interface PluginInstance {
-  readonly contributions: { readonly contextProviders?: readonly ContextProvider[] };
+  readonly contributions: { readonly contextProviders?: readonly ContextProvider[]; readonly turnAnalyzers?: readonly TurnAnalyzer[] };
   start?(): Promise<void>;
   stop?(): Promise<void>;
   health?(): Promise<{ readonly status: "ok" | "degraded" | "failed"; readonly detail?: string }>;
