@@ -15,11 +15,14 @@ const setup = (config: Record<string, never> = {}): PluginSetupContext => ({
 });
 
 test("manifest permits install without configuration", async () => {
-  const manifest = JSON.parse(await readFile(new URL("../../umiro.plugin.json", import.meta.url), "utf8")) as { configSchema?: { required?: unknown; properties?: { protocol?: { enum?: unknown[] } } }; contributes?: { turnAnalyzers?: string[]; contextProviders?: string[] }; optionalSecrets?: string[] };
+  const manifest = JSON.parse(await readFile(new URL("../../umiro.plugin.json", import.meta.url), "utf8")) as { configSchema?: { required?: unknown; properties?: { protocol?: { enum?: unknown[]; default?: unknown }; baseUrl?: { default?: unknown }; model?: { default?: unknown } } }; contributes?: { turnAnalyzers?: string[]; contextProviders?: string[] }; optionalSecrets?: string[] };
   assert.equal(manifest.configSchema?.required, undefined);
   assert.deepEqual(manifest.configSchema?.properties?.protocol?.enum, ["openai-chat-completions", "jev"]);
   assert.deepEqual(manifest.contributes, { turnAnalyzers: ["intent.analysis"] });
   assert.deepEqual(manifest.optionalSecrets, ["UMIRO_INTENT_API_KEY", "TYPESAFE_API_KEY"]);
+  assert.equal(manifest.configSchema?.properties?.protocol?.default, "jev");
+  assert.equal(manifest.configSchema?.properties?.baseUrl?.default, "https://api.typesafe.ai");
+  assert.equal(manifest.configSchema?.properties?.model?.default, "jev-latest");
 });
 
 test("an unconfigured installation stays enabled and contributes an inert provider", async () => {

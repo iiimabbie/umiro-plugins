@@ -15,9 +15,9 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "protocol": { "type": "string", "enum": ["openai-chat-completions", "jev"] },
-      "baseUrl": { "type": "string", "minLength": 1 },
-      "model": { "type": "string", "minLength": 1 },
+      "protocol": { "type": "string", "enum": ["openai-chat-completions", "jev"], "default": "jev" },
+      "baseUrl": { "type": "string", "minLength": 1, "default": "https://api.typesafe.ai" },
+      "model": { "type": "string", "minLength": 1, "default": "jev-latest" },
       "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 10000 },
       "maxInputCharacters": { "type": "integer", "minimum": 1, "maximum": 100000 },
       "maxResponseBytes": { "type": "integer", "minimum": 256, "maximum": 1048576 },
