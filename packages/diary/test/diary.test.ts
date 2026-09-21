@@ -131,3 +131,28 @@ test("journal prompt preserves the personal-diary contract", () => {
   assert.match(JOURNAL_PROMPT, /previous three journal days/);
   assert.match(JOURNAL_PROMPT, /Do not stop after Step 1/);
 });
+
+test("read-only diary view lists valid dates newest first and never writes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "umiro-diary-view-"));
+  try {
+    await mkdir(join(root, JOURNAL_DIRECTORY), { recursive: true });
+    await writeFile(join(root, JOURNAL_DIRECTORY, "2026-09-20.md"), "older\n");
+    await writeFile(join(root, JOURNAL_DIRECTORY, "2026-09-21.md"), "newer\n");
+    await writeFile(join(root, JOURNAL_DIRECTORY, "not-a-date.md"), "ignore\n");
+    await writeFile(join(root, JOURNAL_DIRECTORY, "2026-09-21.txt"), "ignore\n");
+    const plugin = createPlugin({ pluginId: "diary", namespace: "diary", permissionCeiling: authority, config: { workspacePath: root, scheduleEnabled: false, timezone: "UTC" }, getSecret: () => undefined, services: { scheduler: { async list() { return []; }, async create() { throw new Error("must not create"); }, async setEnabled() { throw new Error("must not toggle"); }, async update() { throw new Error("must not update"); } } } });
+    await plugin.start!();
+    await mkdir(join(root, JOURNAL_DIRECTORY, "2026-09-22.md"));
+    await symlink("2026-09-21.md", join(root, JOURNAL_DIRECTORY, "2026-09-23.md"));
+    const view = plugin.contributions.controlPanelViews?.[0];
+    assert.deepEqual(view && await view.list(), [{ id: "2026-09-21", title: "2026-09-21", occurredAt: "2026-09-21T12:00:00.000Z" }, { id: "2026-09-20", title: "2026-09-20", occurredAt: "2026-09-20T12:00:00.000Z" }]);
+    const before = await lstat(join(root, JOURNAL_DIRECTORY, "2026-09-21.md"));
+    assert.deepEqual(await view!.read("2026-09-21"), { id: "2026-09-21", title: "2026-09-21", content: "newer\n", occurredAt: "2026-09-21T12:00:00.000Z" });
+    const after = await lstat(join(root, JOURNAL_DIRECTORY, "2026-09-21.md"));
+    assert.equal(after.mtimeMs, before.mtimeMs);
+    assert.equal(await readFile(join(root, JOURNAL_DIRECTORY, "2026-09-21.md"), "utf8"), "newer\n");
+    await assert.rejects(() => view!.read("2026-09-23"), /non-symlink file/);
+    await assert.rejects(() => view!.read("../2026-09-21"), /YYYY-MM-DD/);
+    assert.equal(await view!.read("2026-09-19"), undefined);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

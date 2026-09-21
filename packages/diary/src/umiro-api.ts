@@ -34,4 +34,14 @@ export interface PluginSetupContext {
   };
   getSecret(name: string): string | undefined;
 }
-export interface PluginInstance { readonly contributions: { readonly tools?: readonly ToolDefinition[] }; start?(): Promise<void>; stop?(): Promise<void> }
+export interface PluginControlPanelDocumentSummary { readonly id: string; readonly title: string; readonly occurredAt?: string }
+export interface PluginControlPanelDocument { readonly id: string; readonly title: string; readonly content: string; readonly occurredAt?: string }
+export interface PluginControlPanelViewDefinition {
+  readonly id: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly kind: "read-only-markdown-collection";
+  list(): Promise<readonly PluginControlPanelDocumentSummary[]>;
+  read(id: string): Promise<PluginControlPanelDocument | undefined>;
+}
+export interface PluginInstance { readonly contributions: { readonly tools?: readonly ToolDefinition[]; readonly controlPanelViews?: readonly PluginControlPanelViewDefinition[] }; start?(): Promise<void>; stop?(): Promise<void> }

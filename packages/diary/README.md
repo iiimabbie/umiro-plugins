@@ -1,5 +1,9 @@
 # Diary
 
+安裝並重啟 Gateway 後，持有 Web UI Token 的管理者會在控制台看到唯讀「日記」頁面。頁面依日期列出並閱讀 `workspace/diary/YYYY-MM-DD.md`，不提供新增、修改或刪除 API。
+
+每日排程仍是日記的唯一自動生成流程；停用或移除外掛不會刪除既有 journal files。
+
 Umiro plugin for an automated agent diary workflow. It is not a manual note database.
 
 Every day, a durable scheduled Run:

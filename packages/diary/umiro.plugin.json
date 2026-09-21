@@ -25,6 +25,7 @@
   },
   "contributes": {
     "tools": ["journal_transcript_by_date", "journal_read", "journal_write"],
+    "controlPanelViews": ["diary"],
     "policy": [
       "Daily journal files are reconstructed by the scheduled Journal workflow from canonical conversation history; ordinary turns must not append ad-hoc notes to them.",
       "The journal is the agent's first-person account of the day, not a changelog, meeting record, neutral incident report, or durable-memory store.",

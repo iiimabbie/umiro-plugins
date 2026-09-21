@@ -1,6 +1,6 @@
 import { chmod, lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { JsonObject, PluginInstance, PluginSetupContext, ToolDefinition, ToolExecutionResult } from "./umiro-api.js";
+import type { JsonObject, PluginControlPanelViewDefinition, PluginInstance, PluginSetupContext, ToolDefinition, ToolExecutionResult } from "./umiro-api.js";
 
 interface DiaryConfig { readonly workspacePath: string; readonly scheduleEnabled?: boolean; readonly schedule?: string; readonly timezone?: string; readonly model?: string; readonly maxTranscriptCharacters?: number }
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,6 +74,31 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     try { const stat = await lstat(path(date)); if (stat.isSymbolicLink() || !stat.isFile()) throw new Error(`journal file must be a regular non-symlink file: ${path(date)}`); return readFile(path(date), "utf8"); }
     catch (error) { if (isMissing(error)) return undefined; throw error; }
   };
+  const diaryView: PluginControlPanelViewDefinition = {
+    id: "diary",
+    title: "日記",
+    description: "每日排程生成的日記；此頁面僅供閱讀。",
+    kind: "read-only-markdown-collection",
+    async list() {
+      const documents: Array<{ id: string; title: string; occurredAt: string }> = [];
+      for (const name of await readdir(diaryRoot)) {
+        if (!name.endsWith(".md")) continue;
+        let date: string;
+        try { date = validDate(name.slice(0, -3)); } catch { continue; }
+        try {
+          const stat = await lstat(join(diaryRoot, name));
+          if (stat.isSymbolicLink() || !stat.isFile()) continue;
+        } catch (error) { if (isMissing(error)) continue; throw error; }
+        documents.push({ id: date, title: date, occurredAt: `${date}T12:00:00.000Z` });
+      }
+      return documents.sort((left, right) => right.id.localeCompare(left.id));
+    },
+    async read(id) {
+      const date = validDate(id);
+      const content = await read(date);
+      return content === undefined ? undefined : { id: date, title: date, content, occurredAt: `${date}T12:00:00.000Z` };
+    },
+  };
   const publish = async (date: string, content: string): Promise<void> => {
     try { await context.services?.searchDocuments?.replaceSource(journalRelativePath(date), [{ id: `journal:${date}`, sourceType: "workspace_file", sourceId: journalRelativePath(date), text: content, occurredAt: `${date}T12:00:00.000Z`, visibility: { kind: "restricted", principalIds: ["owner"], labels: [], resources: [] } }]); }
     catch (error) { context.logger?.warn("journal.search_sync_failed", "Could not refresh daily journal search projection", { date, errorName: error instanceof Error ? error.name : "NonErrorThrown" }); }
@@ -103,7 +128,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     await scheduler.update(trigger.id, { name: "Daily journal", schedule: { kind: "cron", expression: schedule }, timezone, input, misfirePolicy: "coalesce", maxAttempts: 3, retryBackoffMs: 15_000 });
     if (!trigger.enabled) await scheduler.setEnabled(trigger.id, true);
   };
-  return { contributions: { tools }, async start() {
+  return { contributions: { tools, controlPanelViews: [diaryView] }, async start() {
     const workspace = await lstat(config.workspacePath);
     if (workspace.isSymbolicLink() || !workspace.isDirectory()) throw new Error(`journal workspace must be a regular directory: ${config.workspacePath}`);
     diaryRoot = join(await realpath(config.workspacePath), JOURNAL_DIRECTORY);
