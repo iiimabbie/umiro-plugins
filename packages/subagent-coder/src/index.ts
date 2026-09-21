@@ -56,7 +56,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
       try {
         validateSubagentProfiles(await readManifest());
       } catch (error) {
-        context.logger?.error("coder.manifest_invalid", "The coder manifest failed its own profile validation", { errorName: error instanceof Error ? error.name : "NonErrorThrown" });
+        context.logger?.error("subagent-coder.manifest_invalid", "The subagent-coder manifest failed its own profile validation", { errorName: error instanceof Error ? error.name : "NonErrorThrown" });
         throw error;
       }
     },

@@ -3,7 +3,7 @@ import test from "node:test";
 import { PROFILE_LIMITS, createPlugin, readManifest, renderInstructions, validateSubagentProfiles } from "../src/index.js";
 import type { PluginManifest, SubagentProfileDefinition } from "../src/umiro-api.js";
 
-const setup = { pluginId: "coder", namespace: "coder", permissionCeiling: {}, config: {}, getSecret: () => undefined };
+const setup = { pluginId: "subagent-coder", namespace: "subagent-coder", permissionCeiling: {}, config: {}, getSecret: () => undefined };
 
 async function coderProfile(): Promise<SubagentProfileDefinition> {
   const profile = (await readManifest()).contributes.subagentProfiles?.find(entry => entry.id === "coder");

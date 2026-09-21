@@ -1,5 +1,5 @@
 {
-  "name": "@umiro-plugins/coder",
+  "name": "@umiro-plugins/subagent-coder",
   "version": "0.1.0",
   "private": true,
   "type": "module",

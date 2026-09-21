@@ -1,6 +1,6 @@
 {
   "schemaVersion": 0,
-  "id": "coder",
+  "id": "subagent-coder",
   "version": "0.1.0",
   "coreApi": "0",
   "entry": "./dist/src/index.js",
@@ -9,7 +9,7 @@
     "visibility": { "kind": "all" },
     "instructionAuthority": "none"
   },
-  "namespace": "coder",
+  "namespace": "subagent-coder",
   "contributes": {
     "subagentProfiles": [
       {
