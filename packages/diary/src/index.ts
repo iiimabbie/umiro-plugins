@@ -77,8 +77,8 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
   const diaryView: PluginControlPanelViewDefinition = {
     id: "diary",
     title: "日記",
-    description: "每日排程生成的日記；此頁面僅供閱讀。",
-    kind: "read-only-markdown-collection",
+    description: "每日排程生成的日記。",
+    kind: "markdown-collection", writable: true,
     async list() {
       const documents: Array<{ id: string; title: string; occurredAt: string }> = [];
       for (const name of await readdir(diaryRoot)) {
@@ -97,6 +97,10 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
       const date = validDate(id);
       const content = await read(date);
       return content === undefined ? undefined : { id: date, title: date, content, occurredAt: `${date}T12:00:00.000Z` };
+    },
+    async update(id, content) {
+      const date = validDate(id);
+      return serialize(async () => { await write(date, content); return { id: date, title: date, content: await read(date) ?? "", occurredAt: `${date}T12:00:00.000Z` }; });
     },
   };
   const publish = async (date: string, content: string): Promise<void> => {

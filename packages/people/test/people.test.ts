@@ -14,6 +14,22 @@ test("parses PEOPLE sections and Discord identities", () => {
   assert.equal(parsePeople("<people>\n<!--\n## Example\n- Discord ID: 999\n-->\n</people>").length, 0);
 });
 
+test("people control panel view exposes and atomically updates PEOPLE.md", async () => {
+  const root = await mkdtemp(join(tmpdir(), "umiro-people-view-"));
+  try {
+    const content = "# PEOPLE\n\nintroductory notes\n\n## 小明\n- Discord ID: 123\n";
+    await writeFile(join(root, "PEOPLE.md"), content);
+    const plugin = createPlugin({ pluginId: "people", namespace: "people", permissionCeiling: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "none" }, config: { workspacePath: root }, getSecret: () => undefined });
+    await plugin.start?.();
+    const view = plugin.contributions.controlPanelViews?.[0];
+    assert.deepEqual(await view?.list(), [{ id: "PEOPLE.md", title: "PEOPLE.md" }]);
+    assert.equal((await view?.read("PEOPLE.md"))?.content, content);
+    assert.equal((await view?.update?.("PEOPLE.md", `${content}\n## 新人物`))?.content, `${content}\n## 新人物\n`);
+    assert.match(await readFile(join(root, "PEOPLE.md"), "utf8"), /新人物/);
+    assert.equal(await view?.read("missing"), undefined);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 const request = (owner: boolean, externalId: string, prompt: string): ContextRequest => ({
   runId: "run", prompt,
   execution: { origin: { kind: "interactive", transport: "discord", conversationId: "conversation" }, actor: { id: owner ? "owner" : "member", kind: "human", roles: [owner ? "owner" : "member"], identities: [{ transport: "discord", externalId }] }, authority: { capabilities: ["people.write", "people.remove"], visibility: { kind: "all" }, instructionAuthority: "full" } },

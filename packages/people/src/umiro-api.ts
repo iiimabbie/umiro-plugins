@@ -41,8 +41,9 @@ export interface ToolDefinition {
 export interface PluginLogger { debug(event: string, message: string, data?: JsonObject): void; info(event: string, message: string, data?: JsonObject): void; warn(event: string, message: string, data?: JsonObject): void; error(event: string, message: string, data?: JsonObject): void }
 export interface SearchDocument { readonly id: string; readonly sourceType: string; readonly sourceId: string; readonly text: string; readonly visibility: { readonly kind: "all" } }
 export interface PluginSetupContext { readonly pluginId: string; readonly namespace: string; readonly permissionCeiling: unknown; readonly config: JsonObject; readonly logger?: PluginLogger; readonly services?: { readonly searchDocuments?: { replaceSource(sourceId: string, documents: readonly SearchDocument[]): Promise<void>; removeSource(sourceId: string): Promise<void> } }; getSecret(name: string): string | undefined }
+export interface PluginControlPanelViewDefinition { readonly id: string; readonly title: string; readonly description?: string; readonly kind: "markdown-collection"; readonly writable?: boolean; list(): Promise<readonly { readonly id: string; readonly title: string; readonly occurredAt?: string }[]>; read(id: string): Promise<{ readonly id: string; readonly title: string; readonly content: string; readonly occurredAt?: string } | undefined>; update?(id: string, content: string): Promise<{ readonly id: string; readonly title: string; readonly content: string; readonly occurredAt?: string } | undefined> }
 export interface PluginInstance {
-  readonly contributions: { readonly tools?: readonly ToolDefinition[]; readonly contextProviders?: readonly ContextProvider[] };
+  readonly contributions: { readonly tools?: readonly ToolDefinition[]; readonly contextProviders?: readonly ContextProvider[]; readonly controlPanelViews?: readonly PluginControlPanelViewDefinition[] };
   start?(): Promise<void>;
   stop?(): Promise<void>;
 }

@@ -132,7 +132,7 @@ test("journal prompt preserves the personal-diary contract", () => {
   assert.match(JOURNAL_PROMPT, /Do not stop after Step 1/);
 });
 
-test("read-only diary view lists valid dates newest first and never writes", async () => {
+test("diary view lists valid dates newest first and updates only selected dates", async () => {
   const root = await mkdtemp(join(tmpdir(), "umiro-diary-view-"));
   try {
     await mkdir(join(root, JOURNAL_DIRECTORY), { recursive: true });
@@ -151,6 +151,9 @@ test("read-only diary view lists valid dates newest first and never writes", asy
     const after = await lstat(join(root, JOURNAL_DIRECTORY, "2026-09-21.md"));
     assert.equal(after.mtimeMs, before.mtimeMs);
     assert.equal(await readFile(join(root, JOURNAL_DIRECTORY, "2026-09-21.md"), "utf8"), "newer\n");
+    const updated = await view!.update!("2026-09-21", "edited");
+    assert.equal(updated?.content, "edited\n");
+    assert.equal(await readFile(join(root, JOURNAL_DIRECTORY, "2026-09-20.md"), "utf8"), "older\n");
     await assert.rejects(() => view!.read("2026-09-23"), /non-symlink file/);
     await assert.rejects(() => view!.read("../2026-09-21"), /YYYY-MM-DD/);
     assert.equal(await view!.read("2026-09-19"), undefined);

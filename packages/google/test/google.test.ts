@@ -170,6 +170,37 @@ test("calendar tools default to the primary calendar and only patch provided fie
   assert.deepEqual(tool("google_calendar_delete_event").policy.resource?.({ calendar_id: "team@example.com" }), { kind: "google-calendar", id: "team@example.com" });
 });
 
+test("calendar tools create all-day events, convert boundaries, and validate date semantics", async () => {
+  const { tool, calls } = setup(() => ({ id: "event-1", summary: "Holiday" }));
+  const create = await tool("google_calendar_create_event").execute({ summary: "Holiday", start: "2026-12-24", end: "2026-12-25", all_day: true }, execution);
+  assert.equal(create.ok, true);
+  assert.equal(calls[0]!.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0]!.body!), { summary: "Holiday", start: { date: "2026-12-24" }, end: { date: "2026-12-25" } });
+  assert.match((tool("google_calendar_create_event").inputSchema.properties as Record<string, { description?: string }>).end?.description ?? "", /exclusive end date/);
+
+  const toTimed = await tool("google_calendar_update_event").execute({ event_id: "event-1", start: "2026-12-24T09:00:00+08:00", end: "2026-12-24T10:00:00+08:00", all_day: false }, execution);
+  assert.equal(toTimed.ok, true);
+  assert.deepEqual(JSON.parse(calls[1]!.body!), { start: { dateTime: "2026-12-24T09:00:00+08:00", date: null }, end: { dateTime: "2026-12-24T10:00:00+08:00", date: null } });
+
+  const toAllDay = await tool("google_calendar_update_event").execute({ event_id: "event-1", start: "2026-12-31", end: "2027-01-01", all_day: true }, execution);
+  assert.equal(toAllDay.ok, true);
+  assert.deepEqual(JSON.parse(calls[2]!.body!), { start: { date: "2026-12-31", dateTime: null }, end: { date: "2027-01-01", dateTime: null } });
+
+  const textOnly = await tool("google_calendar_update_event").execute({ event_id: "event-1", summary: "Updated" }, execution);
+  assert.equal(textOnly.ok, true);
+  assert.deepEqual(JSON.parse(calls[3]!.body!), { summary: "Updated" });
+  const incompleteMode = await tool("google_calendar_update_event").execute({ event_id: "event-1", all_day: true }, execution);
+  assert.deepEqual(incompleteMode, { ok: false, effectStatus: "not_applicable", error: { code: "invalid_input", message: "changing an event's all-day mode requires both start and end", retryable: false } });
+  const missingBoundary = await tool("google_calendar_update_event").execute({ event_id: "event-1", start: "2026-12-31" }, execution);
+  assert.equal(missingBoundary.ok, false);
+  assert.equal(missingBoundary.effectStatus, "not_applicable");
+  const invalidDate = await tool("google_calendar_create_event").execute({ summary: "Bad", start: "2026-02-30", end: "2026-03-01", all_day: true }, execution);
+  assert.equal(invalidDate.ok, false);
+  const invalidTimed = await tool("google_calendar_create_event").execute({ summary: "Bad", start: "2026-12-24T09:00:00", end: "2026-12-24T10:00:00", all_day: false }, execution);
+  assert.equal(invalidTimed.ok, false);
+  assert.equal(calls.length, 4, "invalid fields fail before issuing a Calendar request");
+});
+
 test("tasks tools use the @default list and stable output", async () => {
   const { tool, calls } = setup(call => call.method === "GET" ? { items: [{ id: "t1", title: "Buy milk", status: "needsAction", due: "2026-04-25T00:00:00.000Z" }, { id: "t2", title: "Done", status: "completed" }] } : call.method === "DELETE" ? new Response(null, { status: 204 }) : { id: "t3", title: "New" });
   const list = await tool("google_tasks_list").execute({ show_completed: true }, execution);

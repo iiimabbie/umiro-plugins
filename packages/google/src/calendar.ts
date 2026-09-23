@@ -5,16 +5,39 @@ interface Event { id?: string; summary?: string; location?: string; start?: { da
 
 const calendarUrl = (calendarId: string, suffix = "") => `${BASE}/${encodeURIComponent(calendarId)}/events${suffix}`;
 
-export interface EventFields { readonly summary?: string; readonly start?: string; readonly end?: string; readonly description?: string; readonly location?: string }
+export class CalendarInputError extends TypeError {}
 
-function eventBody(fields: EventFields): Record<string, unknown> {
+export interface EventFields { readonly summary?: string; readonly start?: string; readonly end?: string; readonly allDay?: boolean; readonly description?: string; readonly location?: string }
+
+function eventBody(fields: EventFields, clearOppositeBoundary = false): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (fields.summary !== undefined) body.summary = fields.summary;
-  if (fields.start !== undefined) body.start = { dateTime: fields.start };
-  if (fields.end !== undefined) body.end = { dateTime: fields.end };
+  if (fields.allDay !== undefined && (fields.start === undefined || fields.end === undefined)) throw new CalendarInputError("changing an event's all-day mode requires both start and end");
+  if (fields.start !== undefined) body.start = fields.allDay
+    ? { date: calendarDate(fields.start, "start"), ...(clearOppositeBoundary ? { dateTime: null } : {}) }
+    : { dateTime: dateTime(fields.start, "start"), ...(clearOppositeBoundary ? { date: null } : {}) };
+  if (fields.end !== undefined) body.end = fields.allDay
+    ? { date: calendarDate(fields.end, "end"), ...(clearOppositeBoundary ? { dateTime: null } : {}) }
+    : { dateTime: dateTime(fields.end, "end"), ...(clearOppositeBoundary ? { date: null } : {}) };
   if (fields.description !== undefined) body.description = fields.description;
   if (fields.location !== undefined) body.location = fields.location;
   return body;
+}
+
+function calendarDate(value: string, field: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) throw new CalendarInputError(`${field} must be a YYYY-MM-DD date for an all-day event`);
+  const [, year, month, day] = match;
+  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (parsed.getUTCFullYear() !== Number(year) || parsed.getUTCMonth() + 1 !== Number(month) || parsed.getUTCDate() !== Number(day)) throw new CalendarInputError(`${field} must be a valid YYYY-MM-DD date for an all-day event`);
+  return value;
+}
+
+function dateTime(value: string, field: string): string {
+  const match = /^(\d{4}-\d{2}-\d{2})T/.exec(value);
+  if (!match || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) || !Number.isFinite(Date.parse(value))) throw new CalendarInputError(`${field} must be an ISO 8601 date-time with a time and timezone`);
+  calendarDate(match[1]!, field);
+  return value;
 }
 
 export class Calendar {
@@ -34,7 +57,7 @@ export class Calendar {
   }
 
   async updateEvent(calendarId: string, eventId: string, fields: EventFields, signal: AbortSignal): Promise<string> {
-    const updated = await this.client.request<Event>(calendarUrl(calendarId, `/${encodeURIComponent(eventId)}`), { method: "PATCH", json: eventBody(fields), signal });
+    const updated = await this.client.request<Event>(calendarUrl(calendarId, `/${encodeURIComponent(eventId)}`), { method: "PATCH", json: eventBody(fields, true), signal });
     return `Event updated: "${updated.summary}" (${updated.id})`;
   }
 

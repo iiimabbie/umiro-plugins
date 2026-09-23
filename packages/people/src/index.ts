@@ -1,7 +1,7 @@
 import { link, lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ContextProvider, ContextRequest, JsonObject, PluginInstance, PluginSetupContext, ToolDefinition, ToolExecutionResult } from "./umiro-api.js";
+import type { ContextProvider, ContextRequest, JsonObject, PluginControlPanelViewDefinition, PluginInstance, PluginSetupContext, ToolDefinition, ToolExecutionResult } from "./umiro-api.js";
 
 export interface Person { readonly heading: string; readonly discordId?: string; readonly aliases: readonly string[]; readonly section: string }
 interface PeopleConfig { readonly workspacePath: string; readonly maxEntries?: number; readonly maxCharacters?: number; readonly inlineLimit?: number; readonly recentTurns?: number }
@@ -83,7 +83,7 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
   const serialize = async <T>(operation: () => Promise<T>): Promise<T> => { const previous = queue; let release!: () => void; queue = new Promise<void>(resolve => { release = resolve; }); await previous; try { return await operation(); } finally { release(); } };
   const read = async () => readFile(file(), "utf8").catch(error => { if ((error as NodeJS.ErrnoException).code === "ENOENT") return "# PEOPLE\n"; throw error; });
   const syncSearch = async () => { const search = context.services?.searchDocuments; if (!search) return; try { const content = await read(); await search.replaceSource("PEOPLE.md", [{ id: "PEOPLE.md", sourceType: "workspace_file", sourceId: "PEOPLE.md", text: content, visibility: { kind: "all" } }]); } catch (error) { context.logger?.warn("people.search_sync_failed", "Could not refresh PEOPLE.md search projection", { errorName: error instanceof Error ? error.name : "NonErrorThrown" }); } };
-  const writeAtomic = async (content: string) => { await mkdir(dirname(file()), { recursive: true }); const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.tmp`; await writeFile(temporary, `${content.trim()}\n`, { mode: 0o600 }); await rename(temporary, file()); await syncSearch(); };
+  const writeAtomic = async (content: string) => { await mkdir(dirname(file()), { recursive: true }); const temporary = `${file()}.${process.pid}.${crypto.randomUUID()}.tmp`; try { await writeFile(temporary, `${content.trim()}\n`, { mode: 0o600 }); await rename(temporary, file()); } finally { await rm(temporary, { force: true }); } await syncSearch(); };
   const tool = (definition: Omit<ToolDefinition, "execute"> & { execute: (input: JsonObject) => Promise<unknown> }): ToolDefinition => ({ ...definition, async execute(input) { try { return ok(await serialize(() => definition.execute(input))); } catch (error) { return failed(error); } } });
   /** Seed PEOPLE.md from the shipped template. link() fails with EEXIST rather than
    * replacing an existing file, so the seed can never overwrite real data.
@@ -126,7 +126,26 @@ export function createPlugin(context: PluginSetupContext): PluginInstance {
     const selected = (config.inlineLimit ?? 0) > 0 && content.length <= (config.inlineLimit ?? 0) ? entries : selectRelevantPeople(entries, request, config);
     return selected.length ? [{ id: "people.relevant:selected", providerId: "people.relevant", role: "people", content: render(selected), source: { kind: "file", ref: file() }, influence: "information", instructionAuthority: "none" }] : [];
   } };
-  return { contributions: { contextProviders: [provider], tools }, async start() {
+  const peopleView: PluginControlPanelViewDefinition = {
+    id: "people", title: "人物", description: "編輯 PEOPLE.md。", kind: "markdown-collection", writable: true,
+    async list() { return [{ id: "PEOPLE.md", title: "PEOPLE.md" }]; },
+    async read(id) {
+      if (id !== "PEOPLE.md") return undefined;
+      const stat = await lstat(file());
+      if (stat.isSymbolicLink() || !stat.isFile()) throw new Error("PEOPLE.md must be a regular non-symlink file");
+      return { id, title: id, content: await readFile(file(), "utf8") };
+    },
+    async update(id, content) {
+      if (id !== "PEOPLE.md") return undefined;
+      const stat = await lstat(file());
+      if (stat.isSymbolicLink() || !stat.isFile()) throw new Error("PEOPLE.md must be a regular non-symlink file");
+      const normalized = content.trim();
+      if (!normalized) throw new TypeError("PEOPLE.md content must not be empty");
+      await serialize(() => writeAtomic(normalized));
+      return { id, title: id, content: await read() };
+    },
+  };
+  return { contributions: { contextProviders: [provider], tools, controlPanelViews: [peopleView] }, async start() {
     const stat = await lstat(config.workspacePath);
     if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error(`people workspace must be a regular directory: ${config.workspacePath}`);
     workspaceRoot = await realpath(config.workspacePath);

@@ -40,8 +40,10 @@ export interface PluginControlPanelViewDefinition {
   readonly id: string;
   readonly title: string;
   readonly description?: string;
-  readonly kind: "read-only-markdown-collection";
+  readonly kind: "markdown-collection";
+  readonly writable?: boolean;
   list(): Promise<readonly PluginControlPanelDocumentSummary[]>;
   read(id: string): Promise<PluginControlPanelDocument | undefined>;
+  readonly update?: (id: string, content: string) => Promise<PluginControlPanelDocument | undefined>;
 }
 export interface PluginInstance { readonly contributions: { readonly tools?: readonly ToolDefinition[]; readonly controlPanelViews?: readonly PluginControlPanelViewDefinition[] }; start?(): Promise<void>; stop?(): Promise<void> }
