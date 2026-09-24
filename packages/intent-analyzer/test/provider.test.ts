@@ -25,13 +25,20 @@ test("analyzer passes every candidate once and discards unknown selections", asy
   assert.deepEqual(result?.selectedToolNames, ["search"]); assert.deepEqual((seen as { tools: unknown[] }).tools, [{ name: "search", description: "Search", parameters: { type: "object" } }, { name: "write", description: "Write", parameters: { type: "object" } }]);
 });
 
-test("explicit actions with no selected tools fail open to the main model", async () => {
+test("explicit actions with no selected business tools retain the empty selection", async () => {
   const records: unknown[] = [];
   const contradictory = { ...valid, actionMode: "mutate", userExplicitlyRequestedExecution: true, selectedToolNames: [] };
   const analyzer = createIntentTurnAnalyzer(config, backend(contradictory), logger(records));
   const result = await analyzer.analyze(request("edit it", [{ name: "write_file", description: "Write a file", parameters: { type: "object" } }]));
-  assert.equal(result, undefined);
-  assert.equal((records[1] as { event: string }).event, "intent.analysis.inconclusive");
+  assert.deepEqual(result?.selectedToolNames, []);
+  assert.equal((records[1] as { event: string }).event, "intent.analysis.completed");
+});
+
+test("catalog is excluded from direct analyzer candidates", async () => {
+  let seen: unknown;
+  const analyzer = createIntentTurnAnalyzer(config, { id: "test", analyze: async input => { seen = input; return { ...valid, selectedToolNames: [] }; } });
+  await analyzer.analyze(request("find a tool", [{ name: "tool_catalog", description: "Catalog", parameters: { type: "object" } }]));
+  assert.deepEqual((seen as { tools: unknown[] }).tools, []);
 });
 
 test("empty, oversized and over-cap candidate input skips backend", async () => {
@@ -39,6 +46,15 @@ test("empty, oversized and over-cap candidate input skips backend", async () => 
   assert.equal(await analyzer.analyze(request("  ")), undefined); assert.equal(await analyzer.analyze(request("four")), undefined);
   const many = Array.from({ length: 129 }, (_, index) => ({ name: `tool-${index}`, description: "x", parameters: { type: "object" } }));
   assert.equal(await analyzer.analyze(request("ok", many)), undefined); assert.deepEqual(calls, []);
+});
+
+test("catalog does not count toward the analyzer candidate limit", async () => {
+  const calls: string[] = [];
+  const tools = Array.from({ length: 128 }, (_, index) => ({ name: `tool-${index}`, description: "x", parameters: { type: "object" } }));
+  tools.push({ name: "tool_catalog", description: "Catalog", parameters: { type: "object" } });
+  const analyzer = createIntentTurnAnalyzer(config, backend({ ...valid, selectedToolNames: [] }, calls));
+  assert.deepEqual((await analyzer.analyze(request("analyze", tools)))?.selectedToolNames, []);
+  assert.deepEqual(calls, ["analyze"]);
 });
 
 test("analyzer fail-opens malformed and backend errors but preserves cancellation", async () => {

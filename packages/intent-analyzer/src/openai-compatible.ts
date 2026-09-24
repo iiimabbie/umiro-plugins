@@ -24,7 +24,7 @@ export class OpenAICompatibleChatBackend implements IntentAnalyzerBackend {
       model: this.config.model,
       temperature: 0,
       stream: false,
-      messages: [{ role: "system", content: CLASSIFIER_SYSTEM_PROMPT }, { role: "user", content: buildClassifierUserPrompt(input.text, input.tools ?? []) }],
+      messages: [{ role: "system", content: CLASSIFIER_SYSTEM_PROMPT }, { role: "user", content: buildClassifierUserPrompt(input.text, (input.tools ?? []).filter(tool => tool.name !== "tool_catalog")) }],
     };
     if (this.config.responseFormat === "json-object") body.response_format = { type: "json_object" };
     const serializedBody = JSON.stringify(body);

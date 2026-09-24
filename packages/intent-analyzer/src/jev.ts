@@ -72,7 +72,7 @@ export class JevBackend implements IntentAnalyzerBackend {
   }
 
   async analyze(input: IntentAnalyzerInput, signal: AbortSignal): Promise<IntentAnalysis> {
-    const { questions, toolIds } = makeQuestions(input.tools ?? []);
+    const { questions, toolIds } = makeQuestions((input.tools ?? []).filter(tool => tool.name !== "tool_catalog"));
     const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json", authorization: `Bearer ${this.apiKey}` };
     const serializedBody = JSON.stringify({ state: { request: input.text }, model: this.config.model, questions });
     if (new TextEncoder().encode(serializedBody).byteLength > 256 * 1024) throw new IntentAnalyzerFailure("input_too_large", "Jev request exceeds the configured byte limit");

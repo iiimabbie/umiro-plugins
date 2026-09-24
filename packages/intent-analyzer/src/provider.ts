@@ -17,8 +17,8 @@ export function createIntentTurnAnalyzer(config: IntentAnalyzerConfig, backend: 
     async analyze(request: TurnAnalyzerInput): Promise<TurnAnalysis | undefined> {
       if (request.signal?.aborted) throw request.signal.reason ?? new DOMException("The operation was aborted", "AbortError");
       if (!request.text.trim() || request.text.length > config.maxInputCharacters) return undefined;
-      if (request.tools.length > MAX_TOOL_CANDIDATES) return undefined;
-      const tools: ToolCandidate[] = request.tools.map(tool => ({ name: tool.name, description: tool.description, parameters: structuredClone(tool.parameters) }));
+      const tools: ToolCandidate[] = request.tools.filter(tool => tool.name !== "tool_catalog").map(tool => ({ name: tool.name, description: tool.description, parameters: structuredClone(tool.parameters) }));
+      if (tools.length > MAX_TOOL_CANDIDATES) return undefined;
       if (new TextEncoder().encode(JSON.stringify({ text: request.text, tools })).byteLength > MAX_ANALYSIS_REQUEST_BYTES) return undefined;
       const started = Date.now();
       const timeoutSignal = AbortSignal.timeout(config.timeoutMs);
@@ -28,10 +28,6 @@ export function createIntentTurnAnalyzer(config: IntentAnalyzerConfig, backend: 
         const analysis = validateIntentAnalysis(await backend.analyze({ text: request.text, tools }, signal));
         const allowed = new Set(tools.map(tool => tool.name));
         const selectedToolNames = analysis.selectedToolNames.filter(name => allowed.has(name));
-        if (selectedToolNames.length === 0 && analysis.userExplicitlyRequestedExecution && (analysis.actionMode === "mutate" || analysis.actionMode === "execute")) {
-          log(logger, "warn", "intent.analysis.inconclusive", "Intent analysis selected no tools for an explicit action; continuing without advisory tool filtering", { eventId: request.event.id, backend: backend.id, actionMode: analysis.actionMode });
-          return undefined;
-        }
         const normalized: IntentAnalysis = { ...analysis, selectedToolNames };
         const block: ContextBlock = {
           id: `intent.analysis:${request.event.id}`,
