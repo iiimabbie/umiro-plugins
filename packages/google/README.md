@@ -33,7 +33,7 @@ Requested scopes: `calendar`, `gmail.modify`, `drive`, `tasks`.
 | `google_calendar_list_events` | `google.calendar.read` | common |
 | `google_calendar_create_event`, `google_calendar_update_event`, `google_calendar_delete_event` | `google.calendar.write` | sensitive |
 | `google_tasks_list` | `google.tasks.read` | common |
-| `google_tasks_create`, `google_tasks_complete`, `google_tasks_delete` | `google.tasks.write` | sensitive |
+| `google_tasks_create`, `google_tasks_update`, `google_tasks_complete`, `google_tasks_delete` | `google.tasks.write` | sensitive |
 | `google_drive_search`, `google_drive_read` | `google.drive.read` | common |
 | `google_drive_upload` | `google.drive.write` | sensitive |
 

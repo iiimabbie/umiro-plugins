@@ -20,6 +20,11 @@ export class Tasks {
     return `Task created: "${created.title}" (${created.id})`;
   }
 
+  async update(listId: string, taskId: string, fields: { title?: string; notes?: string; due?: string }, signal: AbortSignal): Promise<string> {
+    const updated = await this.client.request<Task>(tasksUrl(listId, `/${encodeURIComponent(taskId)}`), { method: "PATCH", json: fields, signal });
+    return `Task updated: "${updated.title}"`;
+  }
+
   async complete(listId: string, taskId: string, signal: AbortSignal): Promise<string> {
     const updated = await this.client.request<Task>(tasksUrl(listId, `/${encodeURIComponent(taskId)}`), { method: "PATCH", json: { status: "completed" }, signal });
     return `Task completed: "${updated.title}"`;

@@ -15,7 +15,7 @@
     "tools": [
       "google_gmail_search", "google_gmail_read", "google_gmail_send", "google_gmail_create_draft",
       "google_calendar_list_events", "google_calendar_create_event", "google_calendar_update_event", "google_calendar_delete_event",
-      "google_tasks_list", "google_tasks_create", "google_tasks_complete", "google_tasks_delete",
+      "google_tasks_list", "google_tasks_create", "google_tasks_update", "google_tasks_complete", "google_tasks_delete",
       "google_drive_search", "google_drive_read", "google_drive_upload"
     ],
     "commands": ["google-auth"],

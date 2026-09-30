@@ -208,10 +208,17 @@ test("tasks tools use the @default list and stable output", async () => {
   assert.equal(calls[0]!.url.pathname, "/tasks/v1/lists/%40default/tasks"); assert.equal(calls[0]!.url.searchParams.get("showHidden"), "true");
   const created = await tool("google_tasks_create").execute({ title: "New", notes: "n" }, execution);
   assert.ok(created.ok && created.output === 'Task created: "New" (t3)'); assert.deepEqual(JSON.parse(calls[1]!.body!), { title: "New", notes: "n" });
+  const updated = await tool("google_tasks_update").execute({ task_id: "t3", task_list_id: "list 9", notes: "", due: "2026-05-02T14:00:00Z" }, execution);
+  assert.ok(updated.ok && updated.output === 'Task updated: "New"'); assert.equal(calls[2]!.method, "PATCH");
+  assert.equal(calls[2]!.url.pathname, "/tasks/v1/lists/list%209/tasks/t3");
+  assert.deepEqual(JSON.parse(calls[2]!.body!), { notes: "", due: "2026-05-02T14:00:00Z" });
+  assert.deepEqual(tool("google_tasks_update").policy.resource?.({}), { kind: "google-tasklist", id: "@default" });
+  const missingFields = await tool("google_tasks_update").execute({ task_id: "t3" }, execution);
+  assert.equal(missingFields.ok, false); assert.equal(calls.length, 3);
   const completed = await tool("google_tasks_complete").execute({ task_id: "t3" }, execution);
-  assert.ok(completed.ok && completed.output === 'Task completed: "New"'); assert.deepEqual(JSON.parse(calls[2]!.body!), { status: "completed" });
+  assert.ok(completed.ok && completed.output === 'Task completed: "New"'); assert.deepEqual(JSON.parse(calls[3]!.body!), { status: "completed" });
   const deleted = await tool("google_tasks_delete").execute({ task_id: "t3", task_list_id: "list-9" }, execution);
-  assert.ok(deleted.ok && deleted.output === "Task deleted (t3)"); assert.equal(calls[3]!.url.pathname, "/tasks/v1/lists/list-9/tasks/t3");
+  assert.ok(deleted.ok && deleted.output === "Task deleted (t3)"); assert.equal(calls[4]!.url.pathname, "/tasks/v1/lists/list-9/tasks/t3");
 });
 
 test("drive search, read and upload", async () => {
