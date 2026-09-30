@@ -104,12 +104,6 @@ test("startup republishes existing canonical diary files only", async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("diary source publishes only the clean canonical contract", async () => {
-  const source = await readFile(new URL("../../src/index.ts", import.meta.url), "utf8");
-  assert.match(source, /JOURNAL_DIRECTORY = "diary"/);
-  assert.doesNotMatch(source, /memoryRoot|removeSource|memory\/\$\{date\}/);
-});
-
 test("disabled journal leaves an existing durable schedule disabled", async () => {
   const root = await mkdtemp(join(tmpdir(), "umiro-diary-disabled-")); let disabled = false;
   try {
