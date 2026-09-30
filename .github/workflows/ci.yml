@@ -38,5 +38,5 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Build
-        run: npm run build
+      - name: Build daily-report
+        run: npm run build --workspace @umiro-plugins/daily-report
