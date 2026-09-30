@@ -10,7 +10,6 @@ interface NoulQuestion { readonly type: "noul"; readonly instructions: string; r
 type JevQuestion = ChoiceQuestion | NoulQuestion;
 interface ChoiceAnswer { readonly type: "choice"; readonly choice: unknown; readonly probabilities?: unknown; readonly confidence?: unknown }
 interface NoulAnswer { readonly type: "noul"; readonly noul: unknown }
-type JevAnswer = ChoiceAnswer | NoulAnswer;
 
 const PRIMARY_INTENTS = ["chat", "code_analysis", "code_change", "research", "memory_query", "scheduling", "system_control", "unknown"] as const;
 const ACTION_MODES = ["read_only", "mutate", "execute", "unknown"] as const;
