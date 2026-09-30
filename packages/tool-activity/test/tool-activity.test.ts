@@ -51,7 +51,7 @@ test("manifest hooks match the plugin instance", async () => {
   const manifest = JSON.parse(await readFile(fileURLToPath(new URL("../../umiro.plugin.json", import.meta.url)), "utf8")) as { contributes: { hooks: string[] } };
   const plugin = createPlugin({ pluginId: "tool-activity", namespace: "tool-activity", permissionCeiling: {}, config: {}, services: { discord: fakeDiscord().discord }, getSecret: () => undefined });
   assert.deepEqual(plugin.contributions.hooks?.map(hook => hook.id), manifest.contributes.hooks);
-  assert.deepEqual(plugin.contributions.hooks?.map(hook => hook.event), ["tool.started", "tool.completed", "run.completed", "delivery.completed", "delivery.failed"]);
+  assert.deepEqual(plugin.contributions.hooks?.map(hook => hook.event), ["tool.started", "tool.completed", "run.completed", "delivery.completed"]);
   assert.throws(() => createPlugin({ pluginId: "tool-activity", namespace: "tool-activity", permissionCeiling: {}, config: {}, getSecret: () => undefined }), /Discord plugin service/);
 });
 
@@ -86,13 +86,12 @@ test("first tool posts the message, later events edit it under the throttle, and
   assert.deepEqual(tracker.activeRunIds, []);
 });
 
-test("failed delivery stays visible until a later retry succeeds", async () => {
+test("activity stays visible after run completion until delayed delivery completes", async () => {
   const { calls, tracker } = setup();
   tracker.toolStarted(toolStarted("run-retry", "op-1", "web_fetch"));
   tracker.runCompleted({ ...discordRun("run-retry"), state: "succeeded" });
   await tracker.idle();
-  tracker.deliveryFailed({ ...discordRun("run-retry"), deliveryId: "delivery-retry", state: "pending", willRetry: true });
-  await tracker.idle();
+  assert.deepEqual(calls, [{ op: "send", channelId: "chan-1", content: "→ web_fetch" }]);
   assert.ok(!calls.some(call => call.op === "delete"));
   assert.deepEqual(tracker.activeRunIds, ["run-retry"]);
   await tracker.deliveryCompleted({ ...discordRun("run-retry"), deliveryId: "delivery-retry", state: "delivered" });

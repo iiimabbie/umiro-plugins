@@ -85,14 +85,6 @@ export class ActivityTracker {
     await this.remove(runId, run);
   }
 
-  /** A failed delivery remains eligible for retry, so its activity message stays visible. */
-  deliveryFailed(payload: JsonObject): void {
-    const runId = str(payload.runId); const channelId = discordChannel(payload);
-    if (!runId || !channelId) return;
-    const run = this.runs.get(runId);
-    if (!run || !run.finished || run.channelId !== channelId) return;
-  }
-
   /** Resolves once every in-flight Discord call has settled. */
   async idle(): Promise<void> { while (this.pending.size) await Promise.allSettled([...this.pending]); }
 
@@ -170,7 +162,6 @@ export function createPlugin(context: PluginSetupContext, deps: { readonly now?:
       hook("tool_completed", "tool.completed", payload => tracker.toolCompleted(payload)),
       hook("run_completed", "run.completed", payload => tracker.runCompleted(payload)),
       hook("delivery_completed", "delivery.completed", payload => tracker.deliveryCompleted(payload)),
-      hook("delivery_failed", "delivery.failed", payload => tracker.deliveryFailed(payload)),
     ] },
     async stop() { tracker.dispose(); },
     async health() { return { status: "ok", detail: `${tracker.activeRunIds.length} active run(s)` }; },
